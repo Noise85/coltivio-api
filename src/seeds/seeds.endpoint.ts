@@ -1,11 +1,15 @@
 import createHttpError from "http-errors";
 import { z } from "zod";
 import { cropSchema } from "../crops/crops.endpoint";
-import { seedQuantityKindSchema, sowingUnitSchema } from "../db/schema";
+import { seedQuantityKindSchema, sowingUnit, sowingUnitSchema } from "../db/schema";
 import { permissionFarmEndpoint } from "../endpoint-factory";
 
 const seedsRead = permissionFarmEndpoint("field_calendar", "read");
 const seedsWrite = permissionFarmEndpoint("field_calendar", "write");
+
+// separate enum instance: reusing sowingUnitSchema with .nullable() makes the OpenAPI docs
+// mark every other usage of it as nullable too
+const nullableSowingUnitSchema = z.enum(sowingUnit.enumValues).nullable();
 
 export const seedSchema = z.object({
   id: z.string(),
@@ -16,7 +20,7 @@ export const seedSchema = z.object({
   crop: cropSchema.omit({ family: true }).nullable(),
   quantityKind: seedQuantityKindSchema,
   defaultAmount: z.number().nullable(),
-  defaultUnit: sowingUnitSchema.nullable(),
+  defaultUnit: nullableSowingUnitSchema,
 });
 
 const createSeedSchema = z.object({
@@ -34,7 +38,7 @@ const updateSeedSchema = z.object({
   description: z.string().optional().nullable(),
   cropId: z.string().optional().nullable(),
   defaultAmount: z.number().optional().nullable(),
-  defaultUnit: sowingUnitSchema.optional().nullable(),
+  defaultUnit: nullableSowingUnitSchema.optional(),
 });
 
 export const getSeedByIdEndpoint = seedsRead.build({
