@@ -110,7 +110,8 @@ export const createSowingsEndpoint = sowingsWrite.build({
   method: "post",
   input: z.object({
     date: ez.dateIn(),
-    cropId: z.string(),
+    // required without a seed, otherwise taken from the seed
+    cropId: z.string().optional(),
     seedId: z.string().optional(),
     unit: sowingUnitSchema,
     additionalNotes: z.string().optional(),
@@ -260,7 +261,8 @@ export const createSowingPresetEndpoint = sowingsWrite.build({
   method: "post",
   input: z.object({
     name: z.string(),
-    cropId: z.string(),
+    // required without a seed, otherwise taken from the seed
+    cropId: z.string().optional(),
     seedId: z.string().optional(),
     unit: sowingUnitSchema,
     amount: z.number().nonnegative(),

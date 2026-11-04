@@ -1,13 +1,13 @@
 import { count, eq } from "drizzle-orm";
 import { RlsDb } from "../db/db";
-import { crops, farmIdColumnValue, seeds, sowings } from "../db/schema";
+import { crops, farmIdColumnValue, seeds, sowingPresets, sowings } from "../db/schema";
 import { assertUnitMatchesQuantityKind } from "../sowings/sowing-units";
 
 export type SeedCreateInput = Omit<typeof seeds.$inferInsert, "id" | "farmId">;
 // quantityKind is immutable: changing weight <-> count would make existing sowings unsummable
 export type SeedUpdateInput = Partial<Omit<SeedCreateInput, "quantityKind">>;
 export type Seed = typeof seeds.$inferSelect & {
-  crop: typeof crops.$inferSelect | null;
+  crop: typeof crops.$inferSelect;
 };
 
 export function seedsApi(rlsDb: RlsDb) {
@@ -56,6 +56,11 @@ export function seedsApi(rlsDb: RlsDb) {
       if (hasValues) {
         await rlsDb.rls(async (tx) => {
           await tx.update(seeds).set(values).where(eq(seeds.id, id));
+          // sowings and presets always carry the crop of their seed
+          if (cropId && cropId !== existingSeed.cropId) {
+            await tx.update(sowings).set({ cropId }).where(eq(sowings.seedId, id));
+            await tx.update(sowingPresets).set({ cropId }).where(eq(sowingPresets.seedId, id));
+          }
         });
       }
       return this.getSeedById(id);

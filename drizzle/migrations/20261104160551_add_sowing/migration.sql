@@ -5,7 +5,7 @@ CREATE TABLE "seeds" (
 	"farm_id" uuid NOT NULL,
 	"name" text NOT NULL,
 	"description" text,
-	"crop_id" uuid,
+	"crop_id" uuid NOT NULL,
 	"quantity_kind" "seed_quantity_kind" NOT NULL,
 	"default_amount" real,
 	"default_unit" "sowing_unit"
@@ -43,7 +43,7 @@ CREATE TABLE "sowings" (
 --> statement-breakpoint
 ALTER TABLE "sowings" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "seeds" ADD CONSTRAINT "seeds_farm_id_farms_id_fkey" FOREIGN KEY ("farm_id") REFERENCES "farms"("id") ON DELETE CASCADE;--> statement-breakpoint
-ALTER TABLE "seeds" ADD CONSTRAINT "seeds_crop_id_crops_id_fkey" FOREIGN KEY ("crop_id") REFERENCES "crops"("id") ON DELETE SET NULL;--> statement-breakpoint
+ALTER TABLE "seeds" ADD CONSTRAINT "seeds_crop_id_crops_id_fkey" FOREIGN KEY ("crop_id") REFERENCES "crops"("id");--> statement-breakpoint
 ALTER TABLE "sowing_presets" ADD CONSTRAINT "sowing_presets_farm_id_farms_id_fkey" FOREIGN KEY ("farm_id") REFERENCES "farms"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "sowing_presets" ADD CONSTRAINT "sowing_presets_crop_id_crops_id_fkey" FOREIGN KEY ("crop_id") REFERENCES "crops"("id") ON DELETE CASCADE;--> statement-breakpoint
 ALTER TABLE "sowing_presets" ADD CONSTRAINT "sowing_presets_seed_id_seeds_id_fkey" FOREIGN KEY ("seed_id") REFERENCES "seeds"("id") ON DELETE CASCADE;--> statement-breakpoint

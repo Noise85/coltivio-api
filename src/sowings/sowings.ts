@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
-import createHttpError from "http-errors";
 import { RlsDb } from "../db/db";
 import { crops, farmIdColumnValue, plots, seeds, sowingPresets, sowings } from "../db/schema";
+import { CodedError } from "../errors";
 import { MultiPolygon } from "../geo/geojson";
 import {
   assertUnitMatchesQuantityKind,
@@ -15,13 +15,17 @@ export type SowingPreset = typeof sowingPresets.$inferSelect & {
   crop: typeof crops.$inferSelect;
   seed: typeof seeds.$inferSelect | null;
 };
-export type SowingPresetCreateInput = Omit<typeof sowingPresets.$inferInsert, "id" | "farmId">;
+// cropId can be omitted when a seed is given, it's taken from the seed
+export type SowingPresetCreateInput = Omit<typeof sowingPresets.$inferInsert, "id" | "farmId" | "cropId"> & {
+  cropId?: string;
+};
 export type SowingPresetUpdateInput = Partial<SowingPresetCreateInput>;
 
 export type SowingBatchCreateInput = {
   date: Date;
   createdBy: string;
-  cropId: string;
+  // can be omitted when a seed is given, it's taken from the seed
+  cropId?: string;
   seedId?: string;
   unit: SowingUnit;
   additionalNotes?: string;
@@ -65,20 +69,37 @@ export interface SowingSummary {
 }
 
 export function sowingsApi(rlsDb: RlsDb) {
-  async function assertSeedUnitCompatible(seedId: string | null | undefined, unit: SowingUnit) {
-    if (!seedId) {
-      return;
+  // With a seed the crop is the seed's crop (a different cropId is rejected) and the unit must fit
+  // the seed's quantity kind. Without a seed the cropId is required. Returns the resulting cropId.
+  async function resolveCropForSeed({
+    seedId,
+    cropId,
+    unit,
+  }: {
+    seedId: string | null | undefined;
+    cropId: string | undefined;
+    unit: SowingUnit;
+  }): Promise<string> {
+    if (seedId) {
+      const seed = await rlsDb.rls(async (tx) => tx.query.seeds.findFirst({ where: { id: seedId } }));
+      if (!seed) {
+        throw new CodedError("seed_not_found", "Seed not found");
+      }
+      assertUnitMatchesQuantityKind(unit, seed.quantityKind);
+      if (cropId && cropId !== seed.cropId) {
+        throw new CodedError("sowing_crop_mismatch", "Crop does not match the crop of the seed");
+      }
+      return seed.cropId;
     }
-    const seed = await rlsDb.rls(async (tx) => tx.query.seeds.findFirst({ where: { id: seedId } }));
-    if (!seed) {
-      throw createHttpError(400, "Seed not found");
+    if (!cropId) {
+      throw new CodedError("sowing_crop_required", "cropId is required when no seed is given");
     }
-    assertUnitMatchesQuantityKind(unit, seed.quantityKind);
+    return cropId;
   }
 
   return {
     async createSowings({ plots: plotInputs, ...base }: SowingBatchCreateInput): Promise<Sowing[]> {
-      await assertSeedUnitCompatible(base.seedId, base.unit);
+      const cropId = await resolveCropForSeed({ seedId: base.seedId, cropId: base.cropId, unit: base.unit });
       const result = await rlsDb.rls(async (tx) => {
         return tx
           .insert(sowings)
@@ -86,6 +107,7 @@ export function sowingsApi(rlsDb: RlsDb) {
             plotInputs.map((plot) => ({
               ...farmIdColumnValue,
               ...base,
+              cropId,
               ...plot,
               ...computeBaseAmounts(plot.amount, base.unit, plot.size),
               geometry: sql<MultiPolygon>`ST_GeomFromGeoJSON(${JSON.stringify(plot.geometry)})`,
@@ -158,12 +180,15 @@ export function sowingsApi(rlsDb: RlsDb) {
       const resultingUnit = unit ?? existingSowing.unit;
       const resultingAmount = amount ?? existingSowing.amount;
       const resultingSeedId = seedId === undefined ? existingSowing.seedId : seedId;
-      if (unit !== undefined || seedId !== undefined) {
-        await assertSeedUnitCompatible(resultingSeedId, resultingUnit);
-      }
+      // a newly chosen seed brings its own crop, otherwise the current crop stays
+      const resultingCropId = await resolveCropForSeed({
+        seedId: resultingSeedId,
+        cropId: cropId ?? (seedId ? undefined : existingSowing.cropId),
+        unit: resultingUnit,
+      });
       const values = {
         date,
-        cropId,
+        cropId: resultingCropId,
         seedId,
         unit,
         amount,
@@ -215,11 +240,11 @@ export function sowingsApi(rlsDb: RlsDb) {
     },
 
     async createSowingPreset(input: SowingPresetCreateInput): Promise<SowingPreset> {
-      await assertSeedUnitCompatible(input.seedId, input.unit);
+      const cropId = await resolveCropForSeed({ seedId: input.seedId, cropId: input.cropId, unit: input.unit });
       const [createdPreset] = await rlsDb.rls(async (tx) => {
         return tx
           .insert(sowingPresets)
-          .values({ ...farmIdColumnValue, ...input })
+          .values({ ...farmIdColumnValue, ...input, cropId })
           .returning({ id: sowingPresets.id });
       });
       const preset = await this.getSowingPresetById(createdPreset.id);
@@ -246,14 +271,16 @@ export function sowingsApi(rlsDb: RlsDb) {
       if (!existingPreset) {
         return undefined;
       }
-      if (input.unit !== undefined || input.seedId !== undefined) {
-        await assertSeedUnitCompatible(
-          input.seedId === undefined ? existingPreset.seedId : input.seedId,
-          input.unit ?? existingPreset.unit
-        );
-      }
+      const cropId = await resolveCropForSeed({
+        seedId: input.seedId === undefined ? existingPreset.seedId : input.seedId,
+        cropId: input.cropId ?? (input.seedId ? undefined : existingPreset.cropId),
+        unit: input.unit ?? existingPreset.unit,
+      });
       await rlsDb.rls(async (tx) => {
-        await tx.update(sowingPresets).set(input).where(eq(sowingPresets.id, id));
+        await tx
+          .update(sowingPresets)
+          .set({ ...input, cropId })
+          .where(eq(sowingPresets.id, id));
       });
       return this.getSowingPresetById(id);
     },

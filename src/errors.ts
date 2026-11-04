@@ -4,6 +4,14 @@ import { z } from "zod";
 export const apiErrorCodeSchema = z.enum([
   // the geometry has no area left after repairing it (e.g. fewer than 3 distinct points)
   "invalid_geometry",
+  // the sowing unit doesn't match the seed's quantity kind (weight vs. count)
+  "sowing_unit_mismatch",
+  // the referenced seed doesn't exist (or belongs to another farm)
+  "seed_not_found",
+  // a crop was given that differs from the crop of the seed
+  "sowing_crop_mismatch",
+  // a sowing or sowing preset without a seed needs a crop
+  "sowing_crop_required",
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

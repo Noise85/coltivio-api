@@ -1,4 +1,4 @@
-import createHttpError from "http-errors";
+import { CodedError } from "../errors";
 import { z } from "zod";
 import { seedQuantityKindSchema, sowingUnitSchema } from "../db/schema";
 
@@ -44,6 +44,9 @@ export function computeBaseAmounts(
 
 export function assertUnitMatchesQuantityKind(unit: SowingUnit, quantityKind: SeedQuantityKind) {
   if (sowingUnits[unit].quantityKind !== quantityKind) {
-    throw createHttpError(400, `Unit ${unit} is not compatible with seed quantity kind ${quantityKind}`);
+    throw new CodedError(
+      "sowing_unit_mismatch",
+      `Unit ${unit} is not compatible with seed quantity kind ${quantityKind}`
+    );
   }
 }

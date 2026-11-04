@@ -1339,7 +1339,10 @@ export const seeds = pgTable.withRLS(
       }),
     name: text().notNull(),
     description: text(),
-    cropId: uuid().references(() => crops.id, { onDelete: "set null" }),
+    // a seed always belongs to a crop, sowings take their crop from the seed
+    cropId: uuid()
+      .notNull()
+      .references(() => crops.id),
     // immutable after creation so all sowings of a seed stay summable
     quantityKind: seedQuantityKind().notNull(),
     defaultAmount: real(),
@@ -3226,6 +3229,7 @@ export const relations = defineRelations(tables, (r) => ({
     crop: r.one.crops({
       from: r.seeds.cropId,
       to: r.crops.id,
+      optional: false,
     }),
     sowings: r.many.sowings(),
     sowingPresets: r.many.sowingPresets(),

@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "dd02ca31-6128-4454-a416-6e6423d905cd",
+  "id": "0aa635a3-06da-43e2-9c64-97087ceb1013",
   "prevIds": [
     "a8a652ae-7f3a-4e0b-b83b-3cd1a044424c"
   ],
@@ -7238,7 +7238,7 @@
     {
       "type": "uuid",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -12466,7 +12466,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "SET NULL",
+      "onDelete": "NO ACTION",
       "name": "seeds_crop_id_crops_id_fkey",
       "entityType": "fks",
       "schema": "public",

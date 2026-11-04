@@ -19,8 +19,8 @@ type SowingResponse = {
   seed: { name: string } | null;
 };
 
-async function createSeed(jwt: string, data: Record<string, unknown>) {
-  const res = await request("POST", "/v1/seeds", { name: "Test Seed", quantityKind: "weight", ...data }, jwt);
+async function createSeed(jwt: string, cropId: string, data: Record<string, unknown>) {
+  const res = await request("POST", "/v1/seeds", { name: "Test Seed", quantityKind: "weight", cropId, ...data }, jwt);
   expect(res.status).toBe(200);
   return ((await res.json()) as { data: { id: string } }).data;
 }
@@ -37,7 +37,7 @@ describe("Sowings", () => {
   it("creates sowings on multiple plots and normalizes per-area amounts", async () => {
     const { jwt, farmId } = await createUserWithFarm();
     const crop = await createCrop(jwt, { name: "Futtermais" });
-    const seed = await createSeed(jwt, { cropId: crop.id });
+    const seed = await createSeed(jwt, crop.id, {});
     const p1 = await createPlot(jwt, { name: "Acker 1" });
     const p2 = await createPlot(jwt, { name: "Acker 2" });
 
@@ -67,6 +67,59 @@ describe("Sowings", () => {
     expect(dbSowings).toHaveLength(2);
   });
 
+  it("takes the crop from the seed and rejects a different crop", async () => {
+    const { jwt } = await createUserWithFarm();
+    const crop = await createCrop(jwt, { name: "Futtermais" });
+    const otherCrop = await createCrop(jwt, { name: "Weizen" });
+    const seed = await createSeed(jwt, crop.id, {});
+    const plot = await createPlot(jwt);
+
+    const [sowing] = await createSowings(jwt, {
+      seedId: seed.id,
+      unit: "kg_per_ha",
+      plots: [{ plotId: plot.id, amount: 30, geometry: TEST_GEOMETRY, size: 10000 }],
+    });
+    expect(sowing.cropId).toBe(crop.id);
+
+    const mismatchRes = await request(
+      "POST",
+      "/v1/sowings",
+      {
+        date: "2025-04-20",
+        cropId: otherCrop.id,
+        seedId: seed.id,
+        unit: "kg_per_ha",
+        plots: [{ plotId: plot.id, amount: 30, geometry: TEST_GEOMETRY, size: 10000 }],
+      },
+      jwt
+    );
+    expect(mismatchRes.status).toBe(400);
+    expect(((await mismatchRes.json()) as { code: string }).code).toBe("sowing_crop_mismatch");
+
+    const missingCropRes = await request(
+      "POST",
+      "/v1/sowings",
+      {
+        date: "2025-04-20",
+        unit: "kg_per_ha",
+        plots: [{ plotId: plot.id, amount: 30, geometry: TEST_GEOMETRY, size: 10000 }],
+      },
+      jwt
+    );
+    expect(missingCropRes.status).toBe(400);
+    expect(((await missingCropRes.json()) as { code: string }).code).toBe("sowing_crop_required");
+
+    // switching to a seed of another crop moves the sowing to that crop
+    const otherSeed = await createSeed(jwt, otherCrop.id, { name: "Weizen CH Nara" });
+    const updateRes = await request("PATCH", `/v1/sowings/byId/${sowing.id}`, { seedId: otherSeed.id }, jwt);
+    expect(updateRes.status).toBe(200);
+    expect(((await updateRes.json()) as { data: SowingResponse }).data.cropId).toBe(otherCrop.id);
+
+    // changing only the crop while a seed of another crop is set is rejected
+    const cropOnlyRes = await request("PATCH", `/v1/sowings/byId/${sowing.id}`, { cropId: crop.id }, jwt);
+    expect(cropOnlyRes.status).toBe(400);
+  });
+
   it("normalizes total amounts and derives the rate per hectare", async () => {
     const { jwt } = await createUserWithFarm();
     const crop = await createCrop(jwt, { name: "Salat" });
@@ -86,7 +139,7 @@ describe("Sowings", () => {
   it("rejects units that do not match the seed quantity kind", async () => {
     const { jwt } = await createUserWithFarm();
     const crop = await createCrop(jwt);
-    const seed = await createSeed(jwt, { quantityKind: "weight" });
+    const seed = await createSeed(jwt, crop.id, { quantityKind: "weight" });
     const plot = await createPlot(jwt);
 
     const res = await request(
@@ -102,12 +155,13 @@ describe("Sowings", () => {
       jwt
     );
     expect(res.status).toBe(400);
+    expect(((await res.json()) as { code: string }).code).toBe("sowing_unit_mismatch");
   });
 
   it("updates a sowing and recomputes base amounts", async () => {
     const { jwt } = await createUserWithFarm();
     const crop = await createCrop(jwt);
-    const seed = await createSeed(jwt, {});
+    const seed = await createSeed(jwt, crop.id, {});
     const plot = await createPlot(jwt);
     const [sowing] = await createSowings(jwt, {
       cropId: crop.id,
@@ -165,7 +219,7 @@ describe("Sowings", () => {
   it("sums base amounts per seed and kind in the summary", async () => {
     const { jwt } = await createUserWithFarm();
     const crop = await createCrop(jwt, { name: "Weizen" });
-    const seed = await createSeed(jwt, { name: "Weizen CH Nara" });
+    const seed = await createSeed(jwt, crop.id, { name: "Weizen CH Nara" });
     const plot = await createPlot(jwt);
     await createSowings(jwt, {
       cropId: crop.id,
@@ -233,7 +287,7 @@ describe("Sowing presets", () => {
   it("creates, updates, lists and deletes presets", async () => {
     const { jwt } = await createUserWithFarm();
     const crop = await createCrop(jwt, { name: "Futtermais" });
-    const seed = await createSeed(jwt, {});
+    const seed = await createSeed(jwt, crop.id, {});
 
     const createRes = await request(
       "POST",

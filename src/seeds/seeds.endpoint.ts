@@ -16,8 +16,8 @@ export const seedSchema = z.object({
   farmId: z.string(),
   name: z.string(),
   description: z.string().nullable(),
-  cropId: z.string().nullable(),
-  crop: cropSchema.omit({ family: true }).nullable(),
+  cropId: z.string(),
+  crop: cropSchema.omit({ family: true }),
   quantityKind: seedQuantityKindSchema,
   defaultAmount: z.number().nullable(),
   defaultUnit: nullableSowingUnitSchema,
@@ -26,7 +26,7 @@ export const seedSchema = z.object({
 const createSeedSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
-  cropId: z.string().optional(),
+  cropId: z.string(),
   quantityKind: seedQuantityKindSchema,
   defaultAmount: z.number().optional(),
   defaultUnit: sowingUnitSchema.optional(),
@@ -36,7 +36,7 @@ const createSeedSchema = z.object({
 const updateSeedSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional().nullable(),
-  cropId: z.string().optional().nullable(),
+  cropId: z.string().optional(),
   defaultAmount: z.number().optional().nullable(),
   defaultUnit: nullableSowingUnitSchema.optional(),
 });
