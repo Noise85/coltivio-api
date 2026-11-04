@@ -24,6 +24,8 @@ import { farmInvitesApi } from "../farm/farm-invites";
 import { fertilizerApplicationsApi } from "../fertilization/fertilizer-applications";
 import { fertilizersApi } from "../fertilization/fertilizers";
 import { harvestsApi } from "../harvests/harvests";
+import { seedsApi } from "../seeds/seeds";
+import { sowingsApi } from "../sowings/sowings";
 import { federalPlotsLayerApi } from "../layer/federal-farm-plots";
 import { cropProtectionApplicationsApi } from "../crop-protection/crop-protection-applications";
 import { plotsApi } from "../plots/plots";
@@ -62,6 +64,8 @@ export function sessionApi(db: RlsDb, t: TFunction, locale: string) {
     harvests: harvestsApi(db),
     fertilizerApplications: fertilizerApplicationsApi(db),
     fertilizers: fertilizersApi(db),
+    seeds: seedsApi(db),
+    sowings: sowingsApi(db),
     tillages: tillagesApi(db),
     cropProtectionProducts: cropProtectionProductsApi(db),
     cropProtectionApplications: cropProtectionApplicationsApi(db),

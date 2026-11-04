@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { TFunction } from "i18next";
 import { txEmailApi } from "../brevo/brevo";
 import { RlsDb } from "../db/db";
+import { sowingUnits } from "../sowings/sowing-units";
 
 export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: string = "de") {
   return {
@@ -13,7 +14,8 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
       tillages: boolean,
       fertilizerApplications: boolean,
       cropProtectionApplications: boolean,
-      harvests: boolean
+      harvests: boolean,
+      sowings: boolean = false
     ): Promise<{ buffer: Buffer; fileName: string }> {
       const selectedFlags = {
         cropRotations,
@@ -21,6 +23,7 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
         fertilizerApplications,
         cropProtectionApplications,
         harvests,
+        sowings,
       };
       return await rlsDb.rls(async (tx) => {
         // Plots archived before the report period are left out, plots archived during it are shown up to that day
@@ -49,6 +52,13 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
             },
             fertilizerApplications: {
               with: { fertilizer: true },
+              orderBy: { date: "desc" },
+              where: {
+                AND: [{ date: { gte: fromDate } }, { date: { lte: toDate } }],
+              },
+            },
+            sowings: {
+              with: { crop: true, seed: true },
               orderBy: { date: "desc" },
               where: {
                 AND: [{ date: { gte: fromDate } }, { date: { lte: toDate } }],
@@ -105,6 +115,12 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
 
         // Format date as DD.MM without year
         const fmtDate = (d: Date) => d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
+
+        // base amounts are grams (weight) or pieces (count); weight is shown in kg
+        const formatSowingTotal = (sowing: { unit: keyof typeof sowingUnits; totalBaseAmount: number }) =>
+          sowingUnits[sowing.unit].quantityKind === "weight"
+            ? `${(sowing.totalBaseAmount / 1000).toFixed(2)} kg`
+            : `${Math.round(sowing.totalBaseAmount)} ${t("sowings.pieces")}`;
 
         const PLOT_COL = 1;
         const MONTH_START_COL = 2;
@@ -259,8 +275,25 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
           const fertilizerApplicationRows: any[][] = [];
           const cropProtectionApplicationRows: any[][] = [];
           const harvestRows: any[][] = [];
+          const sowingRows: (string | number)[][] = [];
 
           for (const plot of plots) {
+            if (sowings) {
+              plot.sowings.forEach((sowing) => {
+                sowingRows.push([
+                  plot.name,
+                  plot.usage ?? "",
+                  sowing.date.toLocaleDateString(locale),
+                  (sowing.size / 100).toFixed(2),
+                  sowing.crop.name,
+                  sowing.seed?.name ?? "",
+                  sowing.amount,
+                  t(`sowings.units.${sowing.unit}`),
+                  formatSowingTotal(sowing),
+                ]);
+              });
+            }
+
             if (tillages) {
               plot.tillages.forEach((tillage) => {
                 tillageRows.push([
@@ -349,6 +382,34 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
           mainTitle.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2F5496" } };
           mainTitle.alignment = { vertical: "middle" };
           rowIndex += 3;
+
+          if (sowings && sowingRows.length > 0) {
+            sheet.mergeCells(`A${rowIndex}:J${rowIndex}`);
+            sheet.getCell(`A${rowIndex}`).value = t("sowings.sowing");
+            sheet.getCell(`A${rowIndex}`).font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+            sheet.getCell(`A${rowIndex}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4472C4" } };
+            rowIndex += 2;
+
+            sheet.addTable({
+              name: "main_sowings",
+              ref: `A${rowIndex}`,
+              headerRow: true,
+              style: { showRowStripes: true },
+              columns: [
+                { name: t("plots.plot") },
+                { name: t("plots.usage") },
+                { name: t("common.date") },
+                { name: t("common.size_a") },
+                { name: t("crops.crop") },
+                { name: t("sowings.seed") },
+                { name: t("sowings.amount") },
+                { name: t("common.unit") },
+                { name: t("common.total") },
+              ],
+              rows: sowingRows,
+            });
+            rowIndex += sowingRows.length + 3;
+          }
 
           if (tillages && tillageRows.length > 0) {
             //tillages table
@@ -589,6 +650,31 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
                 rowIndex += tableRows.length + 3;
               }
             };
+            if (sowings) {
+              addSection(
+                t("sowings.sowing"),
+                [
+                  { key: "date", value: t("common.date") },
+                  { key: "size", value: t("common.size_a") },
+                  { key: "crop", value: t("crops.crop") },
+                  { key: "seed", value: t("sowings.seed") },
+                  { key: "amount", value: t("sowings.amount") },
+                  { key: "unit", value: t("common.unit") },
+                  { key: "total", value: t("common.total") },
+                ],
+                plot.sowings.map((sowing) => ({
+                  date: sowing.date.toLocaleDateString(locale),
+                  size: (sowing.size / 100).toFixed(2),
+                  crop: sowing.crop.name,
+                  seed: sowing.seed?.name ?? "",
+                  amount: sowing.amount,
+                  unit: t(`sowings.units.${sowing.unit}`),
+                  total: formatSowingTotal(sowing),
+                })),
+                plotIndex
+              );
+            }
+
             if (tillages) {
               addSection(
                 t("tillages.tillage"),
@@ -768,7 +854,8 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
       tillages: boolean,
       fertilizerApplications: boolean,
       cropProtectionApplications: boolean,
-      harvests: boolean
+      harvests: boolean,
+      sowings: boolean = false
     ): Promise<void> {
       const { buffer, fileName } = await this.generateReportBuffer(
         fromDate,
@@ -777,7 +864,8 @@ export function fieldCalendarReportsApi(rlsDb: RlsDb, t: TFunction, locale: stri
         tillages,
         fertilizerApplications,
         cropProtectionApplications,
-        harvests
+        harvests,
+        sowings
       );
       await rlsDb.rls(async (tx) => {
         const user = await tx.query.profiles.findFirst({

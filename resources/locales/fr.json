@@ -363,7 +363,9 @@
     "harvest": "{{cropName}} récolté",
     "harvest_with_method": "{{cropName}} récolté ({{conservationMethod}})",
     "fertilizer_application": "{{fertilizerName}} appliqué",
-    "crop_protection_application": "{{productName}} appliqué"
+    "crop_protection_application": "{{productName}} appliqué",
+    "sowing": "{{cropName}} semé",
+    "sowing_with_seed": "{{cropName}} semé ({{seedName}})"
   },
   "harvests": {
     "harvest": "Récolte",
@@ -388,6 +390,24 @@
         "other": "Autre",
         "none": "Aucun"
       }
+    }
+  },
+  "sowings": {
+    "sowing": "Semis",
+    "seed": "Semence",
+    "amount": "Quantité",
+    "pieces": "pce",
+    "units": {
+      "kg_per_ha": "kg/ha",
+      "g_per_m2": "g/m²",
+      "seeds_per_ha": "graines/ha",
+      "seeds_per_m2": "graines/m²",
+      "plants_per_ha": "plants/ha",
+      "plants_per_m2": "plants/m²",
+      "kg": "kg",
+      "g": "g",
+      "seeds": "graines",
+      "plants": "plants"
     }
   },
   "membership_email": {

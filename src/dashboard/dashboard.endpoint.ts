@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { farmEndpointFactory } from "../endpoint-factory";
 import { multiPolygonSchema } from "../db/schema";
+import { FieldEventType, fieldEventTypeSchema } from "./dashboard";
 
 const animalTypeSchema = z.enum(["goat", "sheep", "cow", "horse", "donkey", "pig", "deer"]);
 
@@ -61,13 +62,20 @@ const dashboardStatsSchema = z.object({
   }),
 });
 
+const legacyFieldEventTypes: FieldEventType[] = [
+  "harvest",
+  "fertilizerApplication",
+  "cropProtectionApplication",
+  "tillage",
+];
+
 const fieldEventSchema = z.object({
   id: z.string(),
   date: z.string(),
   geometry: multiPolygonSchema,
   plotId: z.string(),
   plotName: z.string(),
-  type: z.enum(["harvest", "fertilizerApplication", "cropProtectionApplication", "tillage"]),
+  type: fieldEventTypeSchema,
   action: z.string(),
 });
 
@@ -90,12 +98,18 @@ export const getFieldEventsEndpoint = farmEndpointFactory.build({
   input: z.object({
     fromDate: z.string().date(),
     toDate: z.string().date(),
+    // comma-separated list, e.g. "harvest,sowing"; defaults to the types older clients know
+    types: z
+      .string()
+      .optional()
+      .transform((value) => (value ? value.split(",") : [...legacyFieldEventTypes]))
+      .pipe(z.array(fieldEventTypeSchema).min(1)),
   }),
   output: z.object({ result: z.array(fieldEventSchema) }),
   handler: async ({ input, ctx }) => {
     const fromDate = new Date(input.fromDate);
     const toDate = new Date(input.toDate);
-    const result = await ctx.dashboard.getFieldEvents(ctx.farmId, fromDate, toDate);
+    const result = await ctx.dashboard.getFieldEvents(ctx.farmId, fromDate, toDate, input.types);
     return { result };
   },
 });

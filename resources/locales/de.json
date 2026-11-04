@@ -363,7 +363,9 @@
     "harvest": "{{cropName}} geerntet",
     "harvest_with_method": "{{cropName}} geerntet ({{conservationMethod}})",
     "fertilizer_application": "{{fertilizerName}} ausgebracht",
-    "crop_protection_application": "{{productName}} ausgebracht"
+    "crop_protection_application": "{{productName}} ausgebracht",
+    "sowing": "{{cropName}} gesät",
+    "sowing_with_seed": "{{cropName}} gesät ({{seedName}})"
   },
   "harvests": {
     "harvest": "Ernte",
@@ -388,6 +390,24 @@
         "other": "Anderes",
         "none": "Keine"
       }
+    }
+  },
+  "sowings": {
+    "sowing": "Saat",
+    "seed": "Saatgut",
+    "amount": "Menge",
+    "pieces": "Stk.",
+    "units": {
+      "kg_per_ha": "kg/ha",
+      "g_per_m2": "g/m²",
+      "seeds_per_ha": "Körner/ha",
+      "seeds_per_m2": "Körner/m²",
+      "plants_per_ha": "Pflanzen/ha",
+      "plants_per_m2": "Pflanzen/m²",
+      "kg": "kg",
+      "g": "g",
+      "seeds": "Körner",
+      "plants": "Pflanzen"
     }
   },
   "membership_email": {

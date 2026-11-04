@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { and, count, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { TFunction } from "i18next";
 import { expandRecurrence } from "../crop-rotations/crop-rotations";
@@ -41,7 +42,14 @@ export interface DashboardStats {
   };
 }
 
-export type FieldEventType = "harvest" | "fertilizerApplication" | "cropProtectionApplication" | "tillage";
+export const fieldEventTypeSchema = z.enum([
+  "harvest",
+  "fertilizerApplication",
+  "cropProtectionApplication",
+  "tillage",
+  "sowing",
+]);
+export type FieldEventType = z.infer<typeof fieldEventTypeSchema>;
 
 export interface FieldEvent {
   id: string;
@@ -391,95 +399,128 @@ export function dashboardApi(rlsDb: RlsDb, t: TFunction) {
       });
     },
 
-    async getFieldEvents(farmId: string, fromDate: Date, toDate: Date): Promise<FieldEvent[]> {
+    async getFieldEvents(farmId: string, fromDate: Date, toDate: Date, types: FieldEventType[]): Promise<FieldEvent[]> {
+      const includedTypes = new Set(types);
       // For the timestamp cropProtectionApplications.dateTime, extend toDate to end-of-day
       const toDateEndOfDay = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59);
       return rlsDb.rls(async (tx) => {
         // Fetch all event types in parallel with their plot geometry
-        const [harvests, fertilizerApplications, cropProtectionApplications, tillages] = await Promise.all([
-          tx
-            .select({
-              id: tables.harvests.id,
-              date: tables.harvests.date,
-              geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.harvests.geometry})::json`,
-              plotId: tables.plots.id,
-              plotName: tables.plots.name,
-              cropName: tables.crops.name,
-              conservationMethod: tables.harvests.conservationMethod,
-            })
-            .from(tables.harvests)
-            .innerJoin(tables.plots, eq(tables.harvests.plotId, tables.plots.id))
-            .innerJoin(tables.crops, eq(tables.harvests.cropId, tables.crops.id))
-            .where(
-              and(
-                eq(tables.harvests.farmId, farmId),
-                gte(tables.harvests.date, fromDate),
-                lte(tables.harvests.date, toDate)
-              )
-            ),
+        const [harvests, fertilizerApplications, cropProtectionApplications, tillages, sowings] = await Promise.all([
+          includedTypes.has("harvest")
+            ? tx
+                .select({
+                  id: tables.harvests.id,
+                  date: tables.harvests.date,
+                  geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.harvests.geometry})::json`,
+                  plotId: tables.plots.id,
+                  plotName: tables.plots.name,
+                  cropName: tables.crops.name,
+                  conservationMethod: tables.harvests.conservationMethod,
+                })
+                .from(tables.harvests)
+                .innerJoin(tables.plots, eq(tables.harvests.plotId, tables.plots.id))
+                .innerJoin(tables.crops, eq(tables.harvests.cropId, tables.crops.id))
+                .where(
+                  and(
+                    eq(tables.harvests.farmId, farmId),
+                    gte(tables.harvests.date, fromDate),
+                    lte(tables.harvests.date, toDate)
+                  )
+                )
+            : [],
 
-          tx
-            .select({
-              id: tables.fertilizerApplications.id,
-              date: tables.fertilizerApplications.date,
-              geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.fertilizerApplications.geometry})::json`,
-              plotId: tables.plots.id,
-              plotName: tables.plots.name,
-              fertilizerName: tables.fertilizers.name,
-            })
-            .from(tables.fertilizerApplications)
-            .innerJoin(tables.plots, eq(tables.fertilizerApplications.plotId, tables.plots.id))
-            .innerJoin(tables.fertilizers, eq(tables.fertilizerApplications.fertilizerId, tables.fertilizers.id))
-            .where(
-              and(
-                eq(tables.fertilizerApplications.farmId, farmId),
-                gte(tables.fertilizerApplications.date, fromDate),
-                lte(tables.fertilizerApplications.date, toDate)
-              )
-            ),
+          includedTypes.has("fertilizerApplication")
+            ? tx
+                .select({
+                  id: tables.fertilizerApplications.id,
+                  date: tables.fertilizerApplications.date,
+                  geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.fertilizerApplications.geometry})::json`,
+                  plotId: tables.plots.id,
+                  plotName: tables.plots.name,
+                  fertilizerName: tables.fertilizers.name,
+                })
+                .from(tables.fertilizerApplications)
+                .innerJoin(tables.plots, eq(tables.fertilizerApplications.plotId, tables.plots.id))
+                .innerJoin(tables.fertilizers, eq(tables.fertilizerApplications.fertilizerId, tables.fertilizers.id))
+                .where(
+                  and(
+                    eq(tables.fertilizerApplications.farmId, farmId),
+                    gte(tables.fertilizerApplications.date, fromDate),
+                    lte(tables.fertilizerApplications.date, toDate)
+                  )
+                )
+            : [],
 
-          tx
-            .select({
-              id: tables.cropProtectionApplications.id,
-              dateTime: tables.cropProtectionApplications.dateTime,
-              geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.cropProtectionApplications.geometry})::json`,
-              plotId: tables.plots.id,
-              plotName: tables.plots.name,
-              productName: tables.cropProtectionProducts.name,
-            })
-            .from(tables.cropProtectionApplications)
-            .innerJoin(tables.plots, eq(tables.cropProtectionApplications.plotId, tables.plots.id))
-            .innerJoin(
-              tables.cropProtectionProducts,
-              eq(tables.cropProtectionApplications.productId, tables.cropProtectionProducts.id)
-            )
-            .where(
-              and(
-                eq(tables.cropProtectionApplications.farmId, farmId),
-                gte(tables.cropProtectionApplications.dateTime, fromDate),
-                lte(tables.cropProtectionApplications.dateTime, toDateEndOfDay)
-              )
-            ),
+          includedTypes.has("cropProtectionApplication")
+            ? tx
+                .select({
+                  id: tables.cropProtectionApplications.id,
+                  dateTime: tables.cropProtectionApplications.dateTime,
+                  geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.cropProtectionApplications.geometry})::json`,
+                  plotId: tables.plots.id,
+                  plotName: tables.plots.name,
+                  productName: tables.cropProtectionProducts.name,
+                })
+                .from(tables.cropProtectionApplications)
+                .innerJoin(tables.plots, eq(tables.cropProtectionApplications.plotId, tables.plots.id))
+                .innerJoin(
+                  tables.cropProtectionProducts,
+                  eq(tables.cropProtectionApplications.productId, tables.cropProtectionProducts.id)
+                )
+                .where(
+                  and(
+                    eq(tables.cropProtectionApplications.farmId, farmId),
+                    gte(tables.cropProtectionApplications.dateTime, fromDate),
+                    lte(tables.cropProtectionApplications.dateTime, toDateEndOfDay)
+                  )
+                )
+            : [],
 
-          tx
-            .select({
-              id: tables.tillages.id,
-              date: tables.tillages.date,
-              geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.tillages.geometry})::json`,
-              plotId: tables.plots.id,
-              plotName: tables.plots.name,
-              action: tables.tillages.action,
-              customAction: tables.tillages.customAction,
-            })
-            .from(tables.tillages)
-            .innerJoin(tables.plots, eq(tables.tillages.plotId, tables.plots.id))
-            .where(
-              and(
-                eq(tables.tillages.farmId, farmId),
-                gte(tables.tillages.date, fromDate),
-                lte(tables.tillages.date, toDate)
-              )
-            ),
+          includedTypes.has("tillage")
+            ? tx
+                .select({
+                  id: tables.tillages.id,
+                  date: tables.tillages.date,
+                  geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.tillages.geometry})::json`,
+                  plotId: tables.plots.id,
+                  plotName: tables.plots.name,
+                  action: tables.tillages.action,
+                  customAction: tables.tillages.customAction,
+                })
+                .from(tables.tillages)
+                .innerJoin(tables.plots, eq(tables.tillages.plotId, tables.plots.id))
+                .where(
+                  and(
+                    eq(tables.tillages.farmId, farmId),
+                    gte(tables.tillages.date, fromDate),
+                    lte(tables.tillages.date, toDate)
+                  )
+                )
+            : [],
+
+          includedTypes.has("sowing")
+            ? tx
+                .select({
+                  id: tables.sowings.id,
+                  date: tables.sowings.date,
+                  geometry: sql<MultiPolygon>`ST_AsGeoJSON(${tables.sowings.geometry})::json`,
+                  plotId: tables.plots.id,
+                  plotName: tables.plots.name,
+                  cropName: tables.crops.name,
+                  seedName: tables.seeds.name,
+                })
+                .from(tables.sowings)
+                .innerJoin(tables.plots, eq(tables.sowings.plotId, tables.plots.id))
+                .innerJoin(tables.crops, eq(tables.sowings.cropId, tables.crops.id))
+                .leftJoin(tables.seeds, eq(tables.sowings.seedId, tables.seeds.id))
+                .where(
+                  and(
+                    eq(tables.sowings.farmId, farmId),
+                    gte(tables.sowings.date, fromDate),
+                    lte(tables.sowings.date, toDate)
+                  )
+                )
+            : [],
         ]);
 
         const events: FieldEvent[] = [
@@ -533,6 +574,18 @@ export function dashboardApi(rlsDb: RlsDb, t: TFunction) {
             type: "tillage" as const,
             // Use customAction when action === 'custom', otherwise look up the translation by literal key
             action: tl.action === "custom" && tl.customAction ? tl.customAction : TILLAGE_ACTION_LABELS[tl.action](t),
+          })),
+
+          ...sowings.map((sowing) => ({
+            id: sowing.id,
+            date: sowing.date.toISOString().slice(0, 10),
+            geometry: sowing.geometry,
+            plotId: sowing.plotId,
+            plotName: sowing.plotName,
+            type: "sowing" as const,
+            action: sowing.seedName
+              ? t("field_events.sowing_with_seed", { cropName: sowing.cropName, seedName: sowing.seedName })
+              : t("field_events.sowing", { cropName: sowing.cropName }),
           })),
         ];
 
