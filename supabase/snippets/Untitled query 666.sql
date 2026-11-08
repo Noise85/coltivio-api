@@ -1,1 +1,0 @@
-select set_config('request.jwt.claim.sub', NULL, TRUE)

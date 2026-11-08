@@ -3,7 +3,7 @@ services:
   postgres:
     build: ./docker
     restart: always
-    container_name: pastorino-integration-tests
+    container_name: coltivio-integration-tests
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres

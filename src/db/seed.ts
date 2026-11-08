@@ -7,7 +7,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-const db = drizzle({ client: pool, schema });
+const _db = drizzle({ client: pool, schema });
 
 async function main() {
   // const [battesta] = await db

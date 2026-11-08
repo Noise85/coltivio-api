@@ -1,0 +1,535 @@
+{
+  "animal_import": {
+    "error_name_required": "Il nome è obbligatorio",
+    "error_sex_required": "Il sesso è obbligatorio",
+    "error_sex_unknown": "Valore del sesso sconosciuto: {{value}}",
+    "error_dob_required": "La data di nascita è obbligatoria",
+    "error_dob_invalid": "Formato data non valido",
+    "error_ear_tag_assigned": "Il marchio auricolare {{number}} è già assegnato a un altro animale",
+    "error_missing_columns": "Nel file mancano colonne obbligatorie: {{columns}}. Creare il file nella TVD tramite «Esportare i dati» e caricarlo senza modificarlo.",
+    "error_file_unreadable": "Non è stato possibile leggere il file. Caricare il file Excel della TVD senza modificarlo.",
+    "columns": {
+      "earTag": "Numero marca auricolare",
+      "name": "Nome",
+      "sex": "Sesso",
+      "dateOfBirth": "Data di nascita"
+    }
+  },
+  "field_calendar_report": {
+    "mail_subject": "Calendario dei campi",
+    "file_name": "Calendario dei campi {{fromDate}} - {{toDate}}",
+    "mail_content": "Il tuo calendario dei campi per il periodo {{fromDate}} - {{toDate}} è in allegato",
+    "sheet_titles": {
+      "main": "Calendario dei campi {{fromDate}} - {{toDate}}",
+      "main_short": "Panoramica",
+      "per_plot": "Calendario dei campi {{fromDate}} - {{toDate}}",
+      "per_plot_short": "Per parcella"
+    }
+  },
+  "common": {
+    "size_ha": "Superficie (ha)",
+    "size_a": "Superficie (a)",
+    "date": "Data",
+    "from": "Da",
+    "to": "A",
+    "machinery": "Macchina",
+    "device": "Attrezzo",
+    "reason": "Motivo",
+    "action": "Azione",
+    "unit": "Unità",
+    "application_unit": "Unità di distribuzione",
+    "number_of_application_units": "Numero di unità di distribuzione",
+    "amount_per_application_unit": "Quantità per unità di distribuzione",
+    "total": "Totale",
+    "unknown": "Sconosciuto"
+  },
+  "units": {
+    "long": {
+      "load": "Carico",
+      "g": "Grammo",
+      "kg": "Chilogrammo",
+      "dt": "Decitonellata",
+      "t": "Tonnellata",
+      "l": "Litro",
+      "ml": "Millilitro",
+      "m3": "Metro cubo"
+    },
+    "short": {
+      "load": "carico",
+      "g": "g",
+      "kg": "kg",
+      "dt": "dt",
+      "t": "t",
+      "l": "l",
+      "ml": "ml",
+      "m3": "m³"
+    }
+  },
+  "plots": {
+    "plot": "Parcella",
+    "usage": "Codice utilizzo"
+  },
+  "crops": {
+    "codes": {
+      "-1": "Sconosciuto",
+      "501": "Orzo primaverile",
+      "502": "Orzo invernale",
+      "504": "Avena",
+      "505": "Triticale",
+      "506": "Miscuglio di cereali",
+      "507": "Frumento da foraggio",
+      "508": "Mais da granella",
+      "510": "Frumento duro",
+      "511": "Emmer",
+      "512": "Frumento primaverile",
+      "513": "Frumento invernale",
+      "514": "Segale",
+      "515": "Miscuglio di cereali",
+      "516": "Farro",
+      "519": "Mais da seme",
+      "520": "Riso",
+      "521": "Mais da insilaggio e verde",
+      "522": "Barbabietola da zucchero",
+      "523": "Barbabietola da foraggio",
+      "524": "Patata",
+      "525": "Patata",
+      "526": "Colza invernale",
+      "527": "Colza invernale",
+      "528": "Soia",
+      "529": "Riso",
+      "531": "Girasole",
+      "534": "Lino",
+      "536": "Fava",
+      "537": "Pisello",
+      "538": "Lupino",
+      "539": "Zucca da olio",
+      "540": "Cece",
+      "541": "Tabacco",
+      "543": "Cereali",
+      "544": "Camelina",
+      "545": "Ortaggi",
+      "546": "Ortaggi",
+      "548": "Grano saraceno",
+      "551": "Bacche",
+      "552": "Materie prime annuali",
+      "553": "Piante aromatiche e medicinali",
+      "554": "Piante ornamentali",
+      "556": "Maggese",
+      "557": "Maggese",
+      "559": "Fascia di campo",
+      "566": "Papavero",
+      "567": "Cartamo",
+      "568": "Lenticchie",
+      "569": "Miscuglio di leguminose",
+      "570": "Miscuglio di leguminose",
+      "572": "Strisce per insetti utili",
+      "573": "Senape",
+      "574": "Quinoa",
+      "575": "Canapa",
+      "576": "Canapa",
+      "577": "Canapa",
+      "578": "Miglio",
+      "579": "Miglio",
+      "580": "Sorgo",
+      "581": "Sorgo",
+      "591": "Colza invernale",
+      "594": "Seminativo aperto",
+      "595": "Seminativo aperto",
+      "597": "Seminativo aperto",
+      "598": "Seminativo aperto",
+      "592": "Girasole",
+      "601": "Prato artificiale",
+      "602": "Prato artificiale",
+      "611": "Prato naturale",
+      "612": "Prato naturale",
+      "613": "Prato naturale",
+      "616": "Prato naturale",
+      "617": "Prato naturale",
+      "618": "Prato naturale",
+      "621": "Prato naturale",
+      "622": "Prato naturale",
+      "623": "Prato naturale",
+      "625": "Prato naturale",
+      "631": "Leguminose da foraggio",
+      "632": "Graminacee da foraggio",
+      "635": "Prato naturale",
+      "660": "Prato naturale",
+      "693": "Prato naturale",
+      "694": "Prato naturale",
+      "697": "Prato naturale",
+      "698": "Prato naturale",
+      "701": "Viti",
+      "702": "Mele",
+      "703": "Pere",
+      "704": "Drupacee",
+      "705": "Bacche",
+      "706": "Piante aromatiche e medicinali",
+      "707": "Materia prima rinnovabile",
+      "708": "Luppolo",
+      "709": "Rabarbaro",
+      "710": "Asparagi",
+      "711": "Funghi",
+      "712": "Alberi di Natale",
+      "713": "Piante forestali",
+      "714": "Piante ornamentali",
+      "717": "Viti",
+      "718": "Tartufi",
+      "719": "Gelsi",
+      "720": "Castagni",
+      "721": "Colture orticole all'aperto",
+      "722": "Vivaio (viti)",
+      "723": "Vivaio (frutta e bacche)",
+      "724": "Vivaio (rose, arbusti ornamentali, ecc.)",
+      "725": "Permacultura",
+      "730": "Frutteti",
+      "731": "Frutteti",
+      "735": "Viti",
+      "797": "Colture permanenti",
+      "798": "Colture permanenti",
+      "801": "Ortaggi",
+      "802": "Colture speciali (serra)",
+      "803": "Colture orticole (serra)",
+      "804": "Bacche (serra)",
+      "807": "Colture speciali",
+      "808": "Colture orticole",
+      "810": "Funghi",
+      "811": "Ortaggi",
+      "812": "Ortaggi",
+      "813": "Bacche",
+      "814": "Bacche",
+      "830": "Altre colture",
+      "847": "Altre colture",
+      "848": "Altre colture (serra)",
+      "849": "Altre colture",
+      "851": "Area a canneto",
+      "852": "Siepi, arbusti campestri e ripariali",
+      "857": "Siepi, arbusti campestri e ripariali",
+      "858": "Siepi, arbusti campestri e ripariali",
+      "897": "Altre colture",
+      "898": "Altre colture",
+      "901": "Foresta",
+      "902": "Altre colture",
+      "903": "Altre colture",
+      "904": "Altre colture",
+      "905": "Altre colture",
+      "906": "Altre colture",
+      "907": "Altre colture",
+      "908": "Altre colture",
+      "909": "Altre colture",
+      "911": "Altre colture",
+      "921": "Alberi da frutto campestri",
+      "922": "Noci",
+      "923": "Castagni",
+      "924": "Alberi isolati",
+      "926": "Alberi",
+      "927": "Alberi",
+      "928": "Altre colture",
+      "930": "Prato naturale",
+      "933": "Prato naturale",
+      "935": "Prato naturale",
+      "936": "Area a canneto",
+      "950": "Fascia di protezione dei campi",
+      "951": "Cereali",
+      "998": "Altre colture"
+    },
+    "crop": "Coltura",
+    "natural_meadow": "Prato naturale",
+    "artificial_meadow": "Prato artificiale"
+  },
+  "crop_rotations": {
+    "crop_rotation": "Rotazione colturale"
+  },
+  "tillages": {
+    "tillage": "Lavorazione del suolo",
+    "reasons": {
+      "soil_loosening": "Allentamento del suolo",
+      "weed_control": "Controllo delle erbe infestanti",
+      "other": "Altro"
+    },
+    "actions": {
+      "plowing": "Aratura",
+      "tilling": "Erpicatura a denti",
+      "harrowing": "Erpicatura",
+      "rolling": "Rullatura",
+      "rotavating": "Fresatura",
+      "hoeing": "Zappatura",
+      "weed_harrowing": "Strigliatura",
+      "flame_weeding": "Diserbo a fiamma",
+      "custom": "Personalizzato",
+      "other": "Altro"
+    }
+  },
+  "crop_protections": {
+    "crop_protection": "Protezione delle colture",
+    "product": "Prodotto"
+  },
+  "fertilizer_applications": {
+    "fertilizer_application": "Applicazione fertilizzante",
+    "fertilizer": "Fertilizzante"
+  },
+  "animal_types": {
+    "goat": "Capre",
+    "sheep": "Pecore",
+    "cow": "Bovini",
+    "horse": "Cavalli",
+    "donkey": "Asini",
+    "pig": "Suini",
+    "deer": "Cervi"
+  },
+  "treatment_report": {
+    "file_name": "Registro trattamenti {{fromDate}} - {{toDate}}",
+    "title": "Registro trattamenti {{fromDate}} - {{toDate}}",
+    "groups": {
+      "treatment": "Trattamento",
+      "withdrawal_period": "Periodo di attesa",
+      "release_date": "Data di rilascio"
+    },
+    "columns": {
+      "start": "Inizio",
+      "end": "Fine",
+      "animal": "Animale",
+      "treatment_reason": "Motivo del trattamento",
+      "drug": "Medicinale veterinario",
+      "dose": "Dose",
+      "is_antibiotic": "Antibiotico",
+      "critical_antibiotic": "Antibiotico critico",
+      "antibiogram": "Antibiogramma",
+      "drug_origin": "Origine del medicinale",
+      "milk": "Latte",
+      "meat": "Carne",
+      "organs": "Organi"
+    }
+  },
+  "drug_dose_units": {
+    "tablet": "Compressa",
+    "capsule": "Capsula",
+    "patch": "Cerotto",
+    "dose": "Dose",
+    "mg": "mg",
+    "mcg": "mcg",
+    "g": "g",
+    "ml": "ml",
+    "drop": "Goccia"
+  },
+  "drug_dose_per_units": {
+    "kg": "kg",
+    "animal": "Animale",
+    "day": "Giorno",
+    "total_amount": "Quantità totale"
+  },
+  "outdoor_journal_report": {
+    "file_name": "Registro pascolo {{fromDate}} - {{toDate}}",
+    "title": "Registro pascolo {{fromDate}} - {{toDate}}",
+    "day": "Giorno",
+    "animal_category": "Categoria animale",
+    "total_pasture": "Pascolo totale",
+    "total_exercise_yard": "Paddock totale",
+    "months": {
+      "0": "Gennaio",
+      "1": "Febbraio",
+      "2": "Marzo",
+      "3": "Aprile",
+      "4": "Maggio",
+      "5": "Giugno",
+      "6": "Luglio",
+      "7": "Agosto",
+      "8": "Settembre",
+      "9": "Ottobre",
+      "10": "Novembre",
+      "11": "Dicembre"
+    },
+    "meadows_sheet": "Pascoli",
+    "meadow": "Pascolo",
+    "meadow_size": "Superficie (a)",
+    "herd": "Mandria",
+    "type": "Tipo",
+    "from": "Dal",
+    "to": "Al",
+    "days": "Giorni",
+    "animal_count": "Numero di animali",
+    "types": {
+      "pasture": "Pascolo",
+      "exercise_yard": "Paddock"
+    }
+  },
+  "application_units": {
+    "load": "Carico",
+    "bag": "Sacco",
+    "total_amount": "Quantità totale",
+    "amount_per_hectare": "Quantità/ha",
+    "other": "Altro"
+  },
+  "field_events": {
+    "harvest": "{{cropName}} raccolto",
+    "harvest_with_method": "{{cropName}} raccolto ({{conservationMethod}})",
+    "fertilizer_application": "{{fertilizerName}} applicato",
+    "crop_protection_application": "{{productName}} applicato"
+  },
+  "harvests": {
+    "harvest": "Raccolta",
+    "conservation": "Metodo di conservazione",
+    "application_unit": "Unità di distribuzione",
+    "produced_units": "Unità prodotte",
+    "kilos_per_unit": "kg per unità",
+    "total_kilos": "kg totali",
+    "labels": {
+      "harvest_units": {
+        "load": "Carico",
+        "round_bale": "Rotoballa",
+        "square_bale": "Ballone quadro",
+        "crate": "Cassetta",
+        "total_amount": "Quantità totale",
+        "other": "Unità"
+      },
+      "conservation_method": {
+        "dried": "Fieno",
+        "silage": "Insilato",
+        "haylage": "Pastone",
+        "other": "Altro",
+        "none": "Nessuno"
+      }
+    }
+  },
+  "membership_email": {
+    "subtitle": "di AgriColtivio",
+    "product_name": "Iscrizione",
+    "valid_until": "Valido fino al",
+    "payment_method": "Metodo di pagamento",
+    "amount": "Importo",
+    "contact_question": "Per domande, contattaci a",
+    "contact_newsletter": "Iscriviti alla nostra newsletter su",
+    "new": {
+      "subject": "Benvenuto ad AgriColtivio – la tua Iscrizione è attiva",
+      "greeting": "Ciao {{name}}",
+      "welcome": "Benvenuto ad AgriColtivio, l'associazione dietro Coltivio. Bello averti con noi.",
+      "receipt_title": "Conferma del pagamento",
+      "carried_by_members": "Coltivio è finanziato dai contributi dei soci e dalle donazioni. Nessun investitore che si aspetta un rendimento e nessuno che faccia affari con i tuoi dati. Stai sostenendo un'agricoltura aperta e giusta in Svizzera.",
+      "benefits_title": "Come socio",
+      "benefits": [
+        "Diritto di voto all'assemblea dei soci: decidi in che direzione va Coltivio",
+        "Supporto personale per domande sull'app, sull'azienda o sul prossimo controllo",
+        "Accesso al punto d'incontro, per scambiare con altre contadine e altri contadini",
+        "Trasparenza sui conti: relazione annuale e conto annuale vanno ogni anno ai soci"
+      ]
+    },
+    "first_payment": {
+      "subject": "La tua Iscrizione è stata addebitata",
+      "greeting": "Ciao {{name}}",
+      "intro": "La tua Iscrizione è stata addebitata con successo. Grazie per far parte di AgriColtivio!",
+      "receipt_title": "Conferma del pagamento"
+    },
+    "renewal": {
+      "subject": "La tua Iscrizione Coltivio è stata rinnovata",
+      "greeting": "Ciao {{name}}",
+      "intro": "Siamo felici che tu sia ancora con noi! La tua Iscrizione è stata rinnovata con successo — hai ancora pieno accesso a tutte le funzioni di Coltivio.",
+      "receipt_title": "La tua ricevuta di rinnovo"
+    },
+    "reactivation": {
+      "subject": "Bentornato su Coltivio",
+      "greeting": "Ciao {{name}}, bentornato!",
+      "intro": "Siamo felici di riaverти con noi. La tua Iscrizione è di nuovo attiva — hai pieno accesso a tutte le funzioni fino al {{date}}."
+    },
+    "expiry_reminder": {
+      "subject": "La tua iscrizione a Coltivio è scaduta",
+      "greeting": "Ciao {{name}}",
+      "intro": "La tua iscrizione è scaduta il {{date}}. Hai ancora 10 giorni di accesso a tutte le funzioni di Coltivio — ti preghiamo di rinnovare la tua iscrizione per mantenere l'accesso completo.",
+      "cta": "Rinnova l'iscrizione"
+    },
+    "payment_failed": {
+      "subject": "Pagamento fallito – aggiorna il metodo di pagamento",
+      "greeting": "Ciao {{name}}",
+      "intro": "Il rinnovo automatico della tua iscrizione a Coltivio è fallito. Hai ancora 10 giorni di accesso — aggiorna il tuo metodo di pagamento per evitare un'interruzione.",
+      "cta": "Aggiorna il metodo di pagamento"
+    },
+    "access_lost": {
+      "subject": "Il tuo accesso a Coltivio è stato sospeso",
+      "greeting": "Ciao {{name}}",
+      "intro": "La tua iscrizione a Coltivio è scaduta e il tuo accesso alle funzioni dell'app è stato temporaneamente sospeso. Puoi ancora rinnovare la tua iscrizione entro 20 giorni per ripristinare l'accesso completo.",
+      "cta": "Ripristina l'iscrizione"
+    },
+    "membership_ended": {
+      "subject": "La tua iscrizione a Coltivio è terminata",
+      "greeting": "Ciao {{name}}",
+      "intro": "La tua iscrizione ad AgriColtivio è ora terminata. Ti ringraziamo sinceramente per il tempo che hai fatto parte della nostra comunità — è stato un piacere accompagnare te e la tua azienda. I tuoi dati sono conservati e puoi tornare in qualsiasi momento.",
+      "cta": "Iscriviti di nuovo"
+    },
+    "cancellation": {
+      "subject": "La tua iscrizione a Coltivio è stata annullata",
+      "greeting": "Ciao {{name}}",
+      "intro": "Abbiamo ricevuto la tua disdetta, che ha effetto immediato. Hai già pagato fino al {{date}} — puoi revocare la disdetta fino a quella data.",
+      "reactivate_hint": "Se cambi idea, puoi revocare la disdetta nell'app.",
+      "cta": "Riattiva l'iscrizione"
+    }
+  },
+  "donation_email": {
+    "subject": "Grazie per la tua donazione ad AgriColtivio",
+    "greeting": "Ciao {{name}}",
+    "greeting_anonymous": "Ciao",
+    "intro": "Grazie per la tua donazione! Stai sostenendo un'agricoltura aperta e giusta in Svizzera.",
+    "receipt_title": "Conferma della tua donazione",
+    "product_name": "Donazione a Coltivio",
+    "amount": "Importo",
+    "subtitle": "da AgriColtivio"
+  },
+  "verification_email": {
+    "subject": "Conferma il tuo indirizzo e-mail",
+    "subtitle": "da AgriColtivio",
+    "greeting": "Ciao {{name}}",
+    "intro": "Bello averti con noi. Conferma il tuo indirizzo e-mail, così possiamo contattarti per domande sull'azienda e così puoi reimpostare la password se un giorno la dimentichi.",
+    "cta": "Conferma e-mail",
+    "expiry_note": "Il link è valido 14 giorni.",
+    "ignore_note": "Se non ti sei registrato a Coltivio, puoi ignorare questa e-mail."
+  },
+  "welcome_email": {
+    "subject": "Benvenuto su Coltivio",
+    "subtitle": "da AgriColtivio",
+    "greeting": "Ciao {{name}}",
+    "intro": "Il tuo indirizzo e-mail è confermato. Coltivio ora ti è completamente aperto: superfici e calendario dei campi, effettivo animali e giornale dei trattamenti, compiti e il tuo wiki, tutto registrato in azienda invece che la sera al computer.",
+    "verein_title": "Dietro l'app c'è un'associazione",
+    "verein_body": "Coltivio è sviluppato e gestito dall'associazione AgriColtivio, un'associazione di pubblica utilità di diritto svizzero con sede a Braggio, in Val Calanca. L'associazione è politicamente indipendente e non persegue interessi commerciali propri. Coltivio è finanziato dai contributi dei soci e dalle donazioni. Nessun investitore che si aspetta un rendimento e nessuno che faccia affari con i tuoi dati.",
+    "open_source": "Il codice sorgente è aperto e i tuoi dati sono su server nell'UE.",
+    "membership_title": "Diventa socio",
+    "membership_body": "Come socio decidi all'assemblea dei soci in che direzione va il software. Ci raggiungi direttamente per domande sull'app, sull'azienda o sul prossimo controllo, e il punto d'incontro nella Web App ti è aperto per scambiare con altre contadine e altri contadini.",
+    "membership_price": "L'adesione costa CHF 75 all'anno.",
+    "membership_cta": "Diventa socio",
+    "contact": "Per domande ci raggiungi a"
+  },
+  "farm_invite": {
+    "subject": "Sei stato invitato a unirti a {{farmName}} su Coltivio",
+    "body": "Sei stato invitato a unirti a <strong>{{farmName}}</strong> su Coltivio.",
+    "code_label": "Il tuo codice di invito",
+    "expiry": "Questo codice scade tra 7 giorni."
+  },
+  "product_units": {
+    "kg": "kg",
+    "g": "g",
+    "piece": "pezzo",
+    "bunch": "mazzo",
+    "liter": "litro"
+  },
+  "animals_report": {
+    "file_name": "Rapporto animali {{fromDate}} - {{toDate}}"
+  },
+  "task_due_push": {
+    "title": "In scadenza oggi"
+  },
+  "forum_email": {
+    "subtitle": "Treffpunkt",
+    "new_thread_subject": "[Treffpunkt] {{title}}",
+    "reply_subject": "Re: [Treffpunkt] {{title}}",
+    "new_thread_intro": "{{author}} ha aperto un nuovo contributo nel Treffpunkt:",
+    "reply_intro": "{{author}} ha risposto a questo contributo:",
+    "unknown_author": "Qualcuno",
+    "cta": "Apri il contributo",
+    "reason_moderator": "Ricevi questa e-mail perché moderi il Treffpunkt.",
+    "reason_subscribed": "Ricevi questa e-mail perché sei iscritto a questo contributo. Puoi disattivare le notifiche nel contributo."
+  },
+  "parasite_checks": {
+    "follow_up_task_name": "Controllo infestazione da vermi",
+    "methods": {
+      "famacha": "FAMACHA",
+      "fecal_egg_count": "Esame coprologico"
+    },
+    "follow_up_task_name_with_name": "Controllo infestazione da vermi – {{name}}"
+  }
+}

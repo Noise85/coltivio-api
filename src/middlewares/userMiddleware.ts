@@ -1,5 +1,4 @@
 import { z } from "zod";
-import createHttpError from "http-errors";
 import { Middleware } from "express-zod-api";
 
 export const userMiddleware = new Middleware({
@@ -9,7 +8,7 @@ export const userMiddleware = new Middleware({
     name: "token",
   },
   input: z.object({}),
-  handler: async ({ input: {}, ctx, request, logger }) => {
+  handler: async ({ input: {}, ctx: _ctx, request: _request, logger }) => {
     logger.debug("Checking the key and token");
     // const user = await db.Users.findOne({ key });
     // if (!user) {

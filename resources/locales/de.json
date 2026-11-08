@@ -1,4 +1,20 @@
 {
+  "animal_import": {
+    "error_name_required": "Name ist erforderlich",
+    "error_sex_required": "Geschlecht ist erforderlich",
+    "error_sex_unknown": "Unbekannter Geschlechtswert: {{value}}",
+    "error_dob_required": "Geburtsdatum ist erforderlich",
+    "error_dob_invalid": "Ungültiges Datumsformat",
+    "error_ear_tag_assigned": "Ohrmarke {{number}} ist bereits einem anderen Tier zugewiesen",
+    "error_missing_columns": "In der Datei fehlen Pflichtspalten: {{columns}}. Bitte die Tabelle in der TVD über «Daten exportieren» exportieren und die Datei unverändert hochladen.",
+    "error_file_unreadable": "Die Datei konnte nicht gelesen werden. Bitte die Excel-Datei aus der TVD unverändert hochladen.",
+    "columns": {
+      "earTag": "Ohrmarken-Nr.",
+      "name": "Name",
+      "sex": "Geschlecht",
+      "dateOfBirth": "Geburtsdatum"
+    }
+  },
   "field_calendar_report": {
     "mail_subject": "Feldkalender",
     "file_name": "Feldkalender {{fromDate}} - {{toDate}}",
@@ -21,8 +37,9 @@
     "reason": "Grund",
     "action": "Aktion",
     "unit": "Einheit",
-    "amount_of_loads": "Anzahl Fuder",
-    "amount_per_load": "Menge pro Fuder",
+    "application_unit": "Ausbringungseinheit",
+    "number_of_application_units": "Anzahl Ausbringungseinheiten",
+    "amount_per_application_unit": "Menge pro Ausbringungseinheit",
     "total": "Total",
     "unknown": "Unbekannt"
   },
@@ -215,7 +232,6 @@
       "951": "Getreide",
       "998": "Sonstige Kulturen"
     },
-
     "crop": "Kultur",
     "natural_meadow": "Naturwiese",
     "artificial_meadow": "Kunstwiese"
@@ -239,6 +255,7 @@
       "hoeing": "Hacken",
       "weed_harrowing": "Striegeln",
       "flame_weeding": "Abflammen",
+      "custom": "Benutzerdefiniert",
       "other": "Andere"
     }
   },
@@ -250,18 +267,118 @@
     "fertilizer_application": "Düngeraustrag",
     "fertilizer": "Dünger"
   },
+  "animal_types": {
+    "goat": "Ziegen",
+    "sheep": "Schafe",
+    "cow": "Rinder",
+    "horse": "Pferde",
+    "donkey": "Esel",
+    "pig": "Schweine",
+    "deer": "Hirsche"
+  },
+  "treatment_report": {
+    "file_name": "Behandlungsjournal {{fromDate}} - {{toDate}}",
+    "title": "Behandlungsjournal {{fromDate}} - {{toDate}}",
+    "groups": {
+      "treatment": "Behandlung",
+      "withdrawal_period": "Absetzfrist",
+      "release_date": "Freigabedatum"
+    },
+    "columns": {
+      "start": "Start",
+      "end": "Ende",
+      "animal": "Tier",
+      "treatment_reason": "Behandlungsgrund",
+      "drug": "Tierarzneimittel",
+      "dose": "Dosis",
+      "is_antibiotic": "Antibiotika",
+      "critical_antibiotic": "Kritisches Antibiotika",
+      "antibiogram": "Antibiogramm",
+      "drug_origin": "Herkunft Arzneimittel",
+      "milk": "Milch",
+      "meat": "Fleisch",
+      "organs": "Organe"
+    }
+  },
+  "drug_dose_units": {
+    "tablet": "Tablette",
+    "capsule": "Kapsel",
+    "patch": "Pflaster",
+    "dose": "Dosis",
+    "mg": "mg",
+    "mcg": "mcg",
+    "g": "g",
+    "ml": "ml",
+    "drop": "Tropfen"
+  },
+  "drug_dose_per_units": {
+    "kg": "kg",
+    "animal": "Tier",
+    "day": "Tag",
+    "total_amount": "Gesamtmenge"
+  },
+  "outdoor_journal_report": {
+    "file_name": "Weidejournal {{fromDate}} - {{toDate}}",
+    "title": "Weidejournal {{fromDate}} - {{toDate}}",
+    "day": "Tag",
+    "animal_category": "Tierkategorie",
+    "total_pasture": "Total Weide",
+    "total_exercise_yard": "Total Laufhof",
+    "months": {
+      "0": "Januar",
+      "1": "Februar",
+      "2": "März",
+      "3": "April",
+      "4": "Mai",
+      "5": "Juni",
+      "6": "Juli",
+      "7": "August",
+      "8": "September",
+      "9": "Oktober",
+      "10": "November",
+      "11": "Dezember"
+    },
+    "meadows_sheet": "Weiden",
+    "meadow": "Weide",
+    "meadow_size": "Fläche (a)",
+    "herd": "Herde",
+    "type": "Typ",
+    "from": "Von",
+    "to": "Bis",
+    "days": "Tage",
+    "animal_count": "Anzahl Tiere",
+    "types": {
+      "pasture": "Weide",
+      "exercise_yard": "Laufhof"
+    }
+  },
+  "application_units": {
+    "load": "Fuder",
+    "bag": "Sack",
+    "total_amount": "Gesamtmenge",
+    "amount_per_hectare": "Menge/ha",
+    "other": "Andere"
+  },
+  "field_events": {
+    "harvest": "{{cropName}} geerntet",
+    "harvest_with_method": "{{cropName}} geerntet ({{conservationMethod}})",
+    "fertilizer_application": "{{fertilizerName}} ausgebracht",
+    "crop_protection_application": "{{productName}} ausgebracht"
+  },
   "harvests": {
     "harvest": "Ernte",
     "conservation": "Konservierungsmethode",
-    "processing_type": "Verarbeitungsart",
+    "application_unit": "Ausbringungseinheit",
     "produced_units": "Produzierte Einheiten",
     "kilos_per_unit": "kg pro Einheit",
     "total_kilos": "kg Total",
     "labels": {
-      "unit": {
-        "none": "Fuder",
+      "harvest_units": {
+        "load": "Fuder",
         "round_bale": "Rundballen",
         "square_bale": "Quaderballen",
+        "crate": "Harass",
+        "total_amount": "Gesamtmenge",
         "other": "Einheit"
       },
       "conservation_method": {
@@ -270,13 +387,149 @@
         "haylage": "Heulage",
         "other": "Anderes",
         "none": "Keine"
-      },
-      "processing_type": {
-        "none": "Lose",
-        "round_bale": "Rundballen",
-        "square_bale": "Quaderballen",
-        "other": "Anderes"
       }
     }
+  },
+  "membership_email": {
+    "subtitle": "von AgriColtivio",
+    "product_name": "Mitgliedschaft",
+    "valid_until": "Gültig bis",
+    "payment_method": "Zahlungsmittel",
+    "amount": "Betrag",
+    "contact_question": "Bei Fragen erreichst du uns unter",
+    "contact_newsletter": "Abonniere unseren Newsletter auf",
+    "new": {
+      "subject": "Willkommen bei AgriColtivio – deine Mitgliedschaft ist aktiv",
+      "greeting": "Hallo {{name}}",
+      "welcome": "Herzlich willkommen bei AgriColtivio, dem Verein hinter Coltivio. Schön, dass du dabei bist.",
+      "receipt_title": "Deine Zahlungsbestätigung",
+      "carried_by_members": "Coltivio wird von den Beiträgen der Mitglieder und von Spenden getragen. Kein Investor, der eine Rendite erwartet, und niemand, der aus deinen Daten ein Geschäft macht. Du unterstützt damit eine offene und faire Landwirtschaft in der Schweiz.",
+      "benefits_title": "Als Mitglied",
+      "benefits": [
+        "Stimmrecht an der Mitgliederversammlung: du bestimmst mit, wohin sich Coltivio entwickelt",
+        "Persönlicher Support bei Fragen zur App, zum Betrieb oder zur nächsten Kontrolle",
+        "Zugang zum Treffpunkt, wo du dich mit anderen Bäuerinnen und Bauern austauschst",
+        "Einblick in die Finanzen: Jahresbericht und Jahresrechnung gehen jedes Jahr an die Mitglieder"
+      ]
+    },
+    "first_payment": {
+      "subject": "Deine Mitgliedschaft wurde abgerechnet",
+      "greeting": "Hallo {{name}}",
+      "intro": "Deine Mitgliedschaft wurde erfolgreich abgerechnet. Danke, dass du Teil von AgriColtivio bist!",
+      "receipt_title": "Deine Zahlungsbestätigung"
+    },
+    "renewal": {
+      "subject": "Deine Coltivio-Mitgliedschaft wurde erneuert",
+      "greeting": "Hallo {{name}}",
+      "intro": "Schön, dass du noch dabei bist! Deine Mitgliedschaft wurde erfolgreich erneuert — du hast weiterhin vollen Zugriff auf alle Coltivio-Funktionen.",
+      "receipt_title": "Deine Erneuerungsquittung"
+    },
+    "reactivation": {
+      "subject": "Willkommen zurück bei Coltivio",
+      "greeting": "Hallo {{name}}, willkommen zurück!",
+      "intro": "Schön, dass du wieder dabei bist. Deine Mitgliedschaft ist wieder aktiv — du hast vollen Zugriff auf alle Funktionen bis zum {{date}}."
+    },
+    "expiry_reminder": {
+      "subject": "Deine Coltivio-Mitgliedschaft ist abgelaufen",
+      "greeting": "Hallo {{name}}",
+      "intro": "Deine Mitgliedschaft ist am {{date}} abgelaufen. Du hast noch 10 Tage Zugriff auf alle Coltivio-Funktionen — bitte erneuere deine Mitgliedschaft, um den vollen Zugang zu behalten.",
+      "cta": "Mitgliedschaft erneuern"
+    },
+    "payment_failed": {
+      "subject": "Zahlung fehlgeschlagen – bitte Zahlungsmethode aktualisieren",
+      "greeting": "Hallo {{name}}",
+      "intro": "Die automatische Erneuerung deiner Coltivio-Mitgliedschaft ist leider fehlgeschlagen. Du hast noch 10 Tage Zugriff — bitte aktualisiere deine Zahlungsmethode, um eine Unterbrechung zu vermeiden.",
+      "cta": "Zahlungsmethode aktualisieren"
+    },
+    "access_lost": {
+      "subject": "Dein Zugang zu Coltivio wurde unterbrochen",
+      "greeting": "Hallo {{name}}",
+      "intro": "Deine Mitgliedschaft bei Coltivio ist abgelaufen und dein Zugang zu den App-Funktionen wurde vorübergehend deaktiviert. Du kannst deine Mitgliedschaft noch innerhalb von 20 Tagen erneuern, um wieder vollen Zugriff zu erhalten.",
+      "cta": "Mitgliedschaft wiederherstellen"
+    },
+    "membership_ended": {
+      "subject": "Deine Coltivio-Mitgliedschaft ist beendet",
+      "greeting": "Hallo {{name}}",
+      "intro": "Deine Mitgliedschaft bei AgriColtivio ist nun beendet. Wir bedanken uns herzlich für die Zeit, die du Teil unserer Gemeinschaft warst — es war uns eine Freude, dich und deinen Betrieb begleiten zu dürfen. Deine Daten bleiben erhalten und du kannst jederzeit zurückkehren.",
+      "cta": "Jetzt wieder beitreten"
+    },
+    "cancellation": {
+      "subject": "Deine Coltivio-Mitgliedschaft wurde gekündigt",
+      "greeting": "Hallo {{name}}",
+      "intro": "Wir haben deine Kündigung erhalten. Dein Austritt ist mit sofortiger Wirkung wirksam. Du hast bereits bis zum {{date}} bezahlt — bis dahin kannst du deinen Austritt jederzeit widerrufen.",
+      "reactivate_hint": "Wenn du es dir anders überlegst, kannst du deinen Austritt in der App widerrufen.",
+      "cta": "Mitgliedschaft reaktivieren"
+    }
+  },
+  "donation_email": {
+    "subject": "Danke für deine Spende an AgriColtivio",
+    "greeting": "Hallo {{name}}",
+    "greeting_anonymous": "Hallo",
+    "intro": "Vielen Dank für deine Spende! Du unterstützt damit eine offene und faire Landwirtschaft in der Schweiz.",
+    "receipt_title": "Bestätigung deiner Spende",
+    "product_name": "Spende an Coltivio",
+    "amount": "Betrag",
+    "subtitle": "von AgriColtivio"
+  },
+  "verification_email": {
+    "subject": "Bestätige deine E-Mail-Adresse",
+    "subtitle": "von AgriColtivio",
+    "greeting": "Hallo {{name}}",
+    "intro": "Schön, bist du dabei. Bestätige kurz deine E-Mail-Adresse, damit wir dich bei Fragen zum Betrieb erreichen können und du dein Passwort zurücksetzen kannst, falls du es einmal vergisst.",
+    "cta": "E-Mail bestätigen",
+    "expiry_note": "Der Link ist 14 Tage gültig.",
+    "ignore_note": "Falls du dich nicht bei Coltivio registriert hast, kannst du dieses Mail ignorieren."
+  },
+  "welcome_email": {
+    "subject": "Willkommen bei Coltivio",
+    "subtitle": "von AgriColtivio",
+    "greeting": "Hallo {{name}}",
+    "intro": "Deine E-Mail-Adresse ist bestätigt. Coltivio steht dir jetzt vollständig offen: Schläge und Feldkalender, Tierbestand und Behandlungsjournal, Aufgaben und dein Wiki, alles auf dem Hof erfasst statt am Abend am PC.",
+    "verein_title": "Hinter der App steht ein Verein",
+    "verein_body": "Coltivio wird vom Verein AgriColtivio entwickelt und betrieben, einem gemeinnützigen Verein nach Schweizer Recht mit Sitz in Braggio im Calancatal. Der Verein ist politisch unabhängig und verfolgt keine kommerziellen Eigeninteressen. Getragen wird Coltivio von den Beiträgen der Mitglieder und von Spenden. Kein Investor, der eine Rendite erwartet, und niemand, der aus deinen Daten ein Geschäft macht.",
+    "open_source": "Der Quellcode ist offen einsehbar, deine Daten liegen auf Servern in der EU.",
+    "membership_title": "Mitglied werden",
+    "membership_body": "Als Mitglied bestimmst du an der Mitgliederversammlung mit, wohin sich die Software entwickelt. Du erreichst uns direkt bei Fragen zur App, zum Betrieb oder zur nächsten Kontrolle, und der Treffpunkt in der Web-App steht dir offen, wo du dich mit anderen Bäuerinnen und Bauern austauschst.",
+    "membership_price": "Die Mitgliedschaft kostet CHF 75 pro Jahr.",
+    "membership_cta": "Mitglied werden",
+    "contact": "Bei Fragen erreichst du uns unter"
+  },
+  "farm_invite": {
+    "subject": "Du wurdest eingeladen, {{farmName}} auf Coltivio beizutreten",
+    "body": "Du wurdest eingeladen, <strong>{{farmName}}</strong> auf Coltivio beizutreten.",
+    "code_label": "Dein Einladungscode",
+    "expiry": "Dieser Code läuft in 7 Tagen ab."
+  },
+  "product_units": {
+    "kg": "kg",
+    "g": "g",
+    "piece": "Stück",
+    "bunch": "Bund",
+    "liter": "Liter"
+  },
+  "animals_report": {
+    "file_name": "Tierbericht {{fromDate}} - {{toDate}}"
+  },
+  "task_due_push": {
+    "title": "Heute fällig"
+  },
+  "forum_email": {
+    "subtitle": "Treffpunkt",
+    "new_thread_subject": "[Treffpunkt] {{title}}",
+    "reply_subject": "Re: [Treffpunkt] {{title}}",
+    "new_thread_intro": "{{author}} hat einen neuen Beitrag im Treffpunkt eröffnet:",
+    "reply_intro": "{{author}} hat auf diesen Beitrag geantwortet:",
+    "unknown_author": "Jemand",
+    "cta": "Beitrag öffnen",
+    "reason_moderator": "Du erhältst diese E-Mail, weil du den Treffpunkt moderierst.",
+    "reason_subscribed": "Du erhältst diese E-Mail, weil du diesen Beitrag abonniert hast. Im Beitrag kannst du die Benachrichtigungen ausschalten."
+  },
+  "parasite_checks": {
+    "follow_up_task_name": "Kontrolle Wurmbefall",
+    "methods": {
+      "famacha": "FAMACHA",
+      "fecal_egg_count": "Kotprobe"
+    },
+    "follow_up_task_name_with_name": "Kontrolle Wurmbefall – {{name}}"
   }
 }

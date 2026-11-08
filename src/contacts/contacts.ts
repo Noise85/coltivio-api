@@ -1,40 +1,75 @@
-// import { db } from "../db/db";
-// import { eq } from "drizzle-orm";
-// import { contacts } from "../db/schema";
+import { eq } from "drizzle-orm";
+import { RlsDb } from "../db/db";
+import { contacts, farmIdColumnValue } from "../db/schema";
+import { Payment } from "../payments/payments";
+import { SponsorshipWithRelations } from "../sponsorships/sponsorships";
+import { Order } from "../orders/orders";
+import { Animal } from "../animals/animals";
 
-// export type NewContact = typeof contacts.$inferInsert;
-// export type UpdatedContact = Partial<NewContact>;
-// export type Contact = typeof contacts.$inferSelect;
+export type ContactCreateInput = Omit<typeof contacts.$inferInsert, "id" | "farmId">;
+export type ContactUpdateInput = Partial<ContactCreateInput>;
+export type Contact = typeof contacts.$inferSelect;
 
-// export async function createContact(newContact: NewContact): Promise<Contact> {
-//   const [contact] = await db.insert(contacts).values(newContact).returning();
-//   return contact;
-// }
+export type ContactWithRelations = Contact & {
+  payments: Payment[];
+  sponsorships: Array<
+    Omit<
+      Omit<SponsorshipWithRelations, "animal"> & {
+        animal: Omit<Animal, "earTag">;
+      },
+      "contact" | "payments"
+    >
+  >;
+  orders: Order[];
+};
 
-// export async function getContactById(id: string): Promise<Contact> {
-//   const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
-//   if (!contact) {
-//     throw new Error(`Contact with id ${id} not found`);
-//   }
-//   return contact;
-// }
+export function contactsApi(rlsDb: RlsDb) {
+  return {
+    async createContact(contactInput: ContactCreateInput): Promise<Contact> {
+      return rlsDb.rls(async (tx) => {
+        const [contact] = await tx
+          .insert(contacts)
+          .values({ ...farmIdColumnValue, ...contactInput })
+          .returning();
+        return contact;
+      });
+    },
 
-// export async function getContactsForFarm(farmId: string): Promise<Contact[]> {
-//   return db.select().from(contacts).where(eq(contacts.farmId, farmId));
-// }
+    async getContactById(id: string): Promise<ContactWithRelations | undefined> {
+      return rlsDb.rls(async (tx) => {
+        return tx.query.contacts.findFirst({
+          where: { id },
+          with: {
+            payments: true,
+            sponsorships: {
+              with: {
+                animal: true,
+                sponsorshipProgram: true,
+              },
+            },
+            orders: true,
+          },
+        });
+      });
+    },
 
-// export async function updateContact(
-//   id: string,
-//   updatedContact: UpdatedContact
-// ): Promise<Contact> {
-//   const [contact] = await db
-//     .update(contacts)
-//     .set(updatedContact)
-//     .where(eq(contacts.id, id))
-//     .returning();
-//   return contact;
-// }
+    async getContactsForFarm(farmId: string): Promise<Contact[]> {
+      return rlsDb.rls(async (tx) => {
+        return tx.select().from(contacts).where(eq(contacts.farmId, farmId));
+      });
+    },
 
-// export async function deleteContact(id: string): Promise<void> {
-//   await db.delete(contacts).where(eq(contacts.id, id));
-// }
+    async updateContact(id: string, data: ContactUpdateInput): Promise<Contact> {
+      return rlsDb.rls(async (tx) => {
+        const [contact] = await tx.update(contacts).set(data).where(eq(contacts.id, id)).returning();
+        return contact;
+      });
+    },
+
+    async deleteContact(id: string): Promise<void> {
+      return rlsDb.rls(async (tx) => {
+        await tx.delete(contacts).where(eq(contacts.id, id));
+      });
+    },
+  };
+}

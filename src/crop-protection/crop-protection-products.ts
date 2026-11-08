@@ -1,17 +1,9 @@
 import { count, eq } from "drizzle-orm";
 import { RlsDb } from "../db/db";
-import {
-  farmIdColumnValue,
-  cropProtectionProducts,
-  cropProtectionApplications,
-} from "../db/schema";
+import { farmIdColumnValue, cropProtectionProducts, cropProtectionApplications } from "../db/schema";
 
-export type CropProtectionProductCreateInput = Omit<
-  typeof cropProtectionProducts.$inferInsert,
-  "id" | "farmId"
->;
-export type CropProtectionProductUpdateInput =
-  Partial<CropProtectionProductCreateInput>;
+export type CropProtectionProductCreateInput = Omit<typeof cropProtectionProducts.$inferInsert, "id" | "farmId">;
+export type CropProtectionProductUpdateInput = Partial<CropProtectionProductCreateInput>;
 export type CropProtectionProduct = typeof cropProtectionProducts.$inferSelect;
 
 export function cropProtectionProductsApi(rlsDb: RlsDb) {
@@ -27,9 +19,7 @@ export function cropProtectionProductsApi(rlsDb: RlsDb) {
         return cropProtectionProduct;
       });
     },
-    async getCropProtectionProductById(
-      id: string
-    ): Promise<CropProtectionProduct | undefined> {
+    async getCropProtectionProductById(id: string): Promise<CropProtectionProduct | undefined> {
       return rlsDb.rls(async (tx) => {
         const [cropProtectionProduct] = await tx
           .select()
@@ -38,14 +28,9 @@ export function cropProtectionProductsApi(rlsDb: RlsDb) {
         return cropProtectionProduct;
       });
     },
-    async getCropProtectionProductsForFarm(
-      farmId: string
-    ): Promise<CropProtectionProduct[]> {
+    async getCropProtectionProductsForFarm(farmId: string): Promise<CropProtectionProduct[]> {
       return rlsDb.rls(async (tx) => {
-        return tx
-          .select()
-          .from(cropProtectionProducts)
-          .where(eq(cropProtectionProducts.farmId, farmId));
+        return tx.select().from(cropProtectionProducts).where(eq(cropProtectionProducts.farmId, farmId));
       });
     },
     async updateCropProtectionProduct(
@@ -63,9 +48,7 @@ export function cropProtectionProductsApi(rlsDb: RlsDb) {
     },
     async deleteCropProtectionProduct(id: string): Promise<void> {
       return rlsDb.rls(async (tx) => {
-        await tx
-          .delete(cropProtectionProducts)
-          .where(eq(cropProtectionProducts.id, id));
+        await tx.delete(cropProtectionProducts).where(eq(cropProtectionProducts.id, id));
       });
     },
     async cropProtectionProductInUse(id: string): Promise<boolean> {

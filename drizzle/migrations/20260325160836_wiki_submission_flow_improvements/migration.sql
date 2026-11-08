@@ -1,0 +1,1 @@
+ALTER TYPE "wiki_change_request_status" ADD VALUE 'changes_requested';

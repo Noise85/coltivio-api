@@ -1,1 +1,0 @@
-ALTER POLICY "members of same farm can read each others profile and owners can read their own profile" ON "profiles" TO "authenticated" USING (((("profiles"."farm_id" is not null) and "profiles"."farm_id" = farm_id()) or (select auth.uid()) = "profiles"."id"));

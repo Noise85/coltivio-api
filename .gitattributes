@@ -1,0 +1,4 @@
+# One line ending for everyone. Without this, Git for Windows checks out CRLF
+# (core.autocrlf=true) while Prettier writes LF, and every formatted file shows up
+# as modified forever, even though the content is identical to what CI sees.
+* text=auto eol=lf

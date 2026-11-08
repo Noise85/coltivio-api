@@ -1,28 +1,47 @@
 import { ez } from "express-zod-api";
 import createHttpError from "http-errors";
 import { z } from "zod";
+import { cropSchema } from "../crops/crops.endpoint";
+import { ensureDateRange } from "../date-utils";
 import * as tables from "../db/schema";
-import { farmEndpointFactory } from "../endpoint-factory";
-import { ensureDateRange } from "../utils";
+import { permissionFarmEndpoint } from "../endpoint-factory";
 
-const harvestResponseSchema = tables.selectHarvestSchema.merge(
-  z.object({
-    createdAt: ez.dateOut(),
-    date: ez.dateOut(),
-    machinery: tables.selectHarvestingMachinerySchema.nullable(),
-    crop: tables.selectCropSchema,
-    plot: tables.selectPlotSchema.omit({ cropRotations: true }),
-  }),
-);
+const harvestsRead = permissionFarmEndpoint("field_calendar", "read");
+const harvestsWrite = permissionFarmEndpoint("field_calendar", "write");
 
-export const getHarvestsForFarmEndpoint = farmEndpointFactory.build({
+const plotMinimalSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+const harvestSchema = z.object({
+  id: z.string(),
+  date: ez.dateOut(),
+  farmId: z.string(),
+  additionalNotes: z.string().nullable(),
+  conservationMethod: tables.conservationMethodEnumSchema.nullable(),
+  unit: tables.harvestUnitsSchema,
+  kilosPerUnit: z.number(),
+  numberOfUnits: z.number(),
+  harvestCount: z.number().nullable(),
+  geometry: tables.multiPolygonSchema,
+  cropId: z.string(),
+  crop: cropSchema.omit({ family: true }),
+  plotId: z.string(),
+  plot: plotMinimalSchema,
+  size: z.number(),
+  createdAt: ez.dateOut(),
+  createdBy: z.string().nullable(),
+});
+
+export const getHarvestsForFarmEndpoint = harvestsRead.build({
   method: "get",
   input: z.object({
     fromDate: ez.dateIn().optional(),
     toDate: ez.dateIn().optional(),
   }),
   output: z.object({
-    result: z.array(harvestResponseSchema),
+    result: z.array(harvestSchema),
     count: z.number(),
   }),
   handler: async ({ input, ctx: { harvests, farmId } }) => {
@@ -32,11 +51,11 @@ export const getHarvestsForFarmEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const getHarvestsForPlotEndpoint = farmEndpointFactory.build({
+export const getHarvestsForPlotEndpoint = harvestsRead.build({
   method: "get",
   input: z.object({ plotId: z.string() }),
   output: z.object({
-    result: z.array(harvestResponseSchema.omit({ plot: true })),
+    result: z.array(harvestSchema.omit({ plot: true })),
     count: z.number(),
   }),
   handler: async ({ input, ctx: { harvests } }) => {
@@ -54,31 +73,31 @@ const harvestSummaryResponseSchema = z.object({
         z.object({
           totalAmountInKilos: z.number(),
           forageName: z.string(),
-          conservationMethod: z.string(),
+          conservationMethod: z.string().optional().nullable(),
           producedUnits: z.array(
             z.object({
-              processingMethod: z.string(),
+              unit: z.string(),
               totalAmountInKilos: z.number(),
               totalProducedUnits: z.number(),
-            }),
+            })
           ),
-        }),
+        })
       ),
-    }),
+    })
   ),
 });
 
-export const getHarvestSummaryForFarmEndpoint = farmEndpointFactory.build({
+export const getHarvestSummaryForFarmEndpoint = harvestsRead.build({
   method: "get",
   input: z.object({}),
   output: harvestSummaryResponseSchema,
-  handler: async ({ input, ctx: { harvests, farmId } }) => {
+  handler: async ({ ctx: { harvests, farmId } }) => {
     const result = await harvests.getHarvestSummaryForFarm(farmId);
     return result;
   },
 });
 
-export const getHarvestSummaryForPlotEndpoint = farmEndpointFactory.build({
+export const getHarvestSummaryForPlotEndpoint = harvestsRead.build({
   method: "get",
   input: z.object({ plotId: z.string() }),
   output: harvestSummaryResponseSchema,
@@ -88,10 +107,10 @@ export const getHarvestSummaryForPlotEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const getHarvestByIdEndpoint = farmEndpointFactory.build({
+export const getHarvestByIdEndpoint = harvestsRead.build({
   method: "get",
   input: z.object({ harvestId: z.string() }),
-  output: harvestResponseSchema,
+  output: harvestSchema,
   handler: async ({ input, ctx: { harvests } }) => {
     const harvest = await harvests.getHarvestById(input.harvestId);
     if (!harvest) {
@@ -104,27 +123,26 @@ export const getHarvestByIdEndpoint = farmEndpointFactory.build({
 const createHarvestsSchema = z.object({
   date: ez.dateIn(),
   cropId: z.string(),
-  processingType: tables.processingTypeEnumSchema,
-  conservationMethod: tables.conservationMethodEnumSchema,
+  conservationMethod: tables.conservationMethodEnumSchema.optional().nullable(),
   kilosPerUnit: z.number(),
   harvestCount: z.number().optional(),
   additionalNotes: z.string().optional(),
-  machineryId: z.string().optional(),
+  unit: tables.harvestUnitsSchema,
   plots: z
     .object({
       plotId: z.string(),
       geometry: tables.multiPolygonSchema,
       size: z.number(),
-      producedUnits: z.number(),
+      numberOfUnits: z.number(),
     })
     .array(),
 });
 
-export const createHarvestsEndpoint = farmEndpointFactory.build({
+export const createHarvestsEndpoint = harvestsWrite.build({
   method: "post",
   input: createHarvestsSchema,
   output: z.object({
-    result: harvestResponseSchema.array(),
+    result: harvestSchema.array(),
     count: z.number(),
   }),
   handler: async ({ input, ctx: { harvests, user } }) => {
@@ -139,7 +157,31 @@ export const createHarvestsEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const deleteHarvestEndpoint = farmEndpointFactory.build({
+export const updateHarvestEndpoint = harvestsWrite.build({
+  method: "patch",
+  // plot, geometry and size can't be changed after creation
+  input: z.object({
+    harvestId: z.string(),
+    date: ez.dateIn().optional(),
+    cropId: z.string().optional(),
+    conservationMethod: tables.conservationMethodEnumSchema.optional().nullable(),
+    unit: tables.harvestUnitsSchema.optional(),
+    kilosPerUnit: z.number().optional(),
+    numberOfUnits: z.number().optional(),
+    harvestCount: z.number().optional().nullable(),
+    additionalNotes: z.string().optional().nullable(),
+  }),
+  output: harvestSchema,
+  handler: async ({ input: { harvestId, ...data }, ctx: { harvests } }) => {
+    const harvest = await harvests.updateHarvest(harvestId, data);
+    if (!harvest) {
+      throw createHttpError(404, "Harvest not found");
+    }
+    return harvest;
+  },
+});
+
+export const deleteHarvestEndpoint = harvestsWrite.build({
   method: "delete",
   input: z.object({ harvestId: z.string() }),
   output: z.object({}),
@@ -149,7 +191,7 @@ export const deleteHarvestEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const getHarvestYearsEndpoint = farmEndpointFactory.build({
+export const getHarvestYearsEndpoint = harvestsRead.build({
   method: "get",
   input: z.object({}),
   output: z.object({
@@ -159,5 +201,79 @@ export const getHarvestYearsEndpoint = farmEndpointFactory.build({
   handler: async ({ ctx: { harvests } }) => {
     const result = await harvests.getHarvestYears();
     return { result, count: result.length };
+  },
+});
+
+const harvestPresetSchema = z.object({
+  id: z.string(),
+  farmId: z.string(),
+  name: z.string(),
+  unit: tables.harvestUnitsSchema,
+  kilosPerUnit: z.number(),
+  conservationMethod: tables.conservationMethodEnumSchema.nullable(),
+});
+
+export const getHarvestPresetsEndpoint = harvestsRead.build({
+  method: "get",
+  input: z.object({}),
+  output: z.object({
+    result: z.array(harvestPresetSchema),
+    count: z.number(),
+  }),
+  handler: async ({ ctx: { harvests } }) => {
+    const result = await harvests.getHarvestPresets();
+    return { result, count: result.length };
+  },
+});
+
+export const getHarvestPresetByIdEndpoint = harvestsRead.build({
+  method: "get",
+  input: z.object({ presetId: z.string() }),
+  output: harvestPresetSchema,
+  handler: async ({ input, ctx: { harvests } }) => {
+    const preset = await harvests.getHarvestPresetById(input.presetId);
+    if (!preset) {
+      throw createHttpError(404, "Harvest preset not found");
+    }
+    return preset;
+  },
+});
+
+export const createHarvestPresetEndpoint = harvestsWrite.build({
+  method: "post",
+  input: z.object({
+    name: z.string(),
+    unit: tables.harvestUnitsSchema,
+    kilosPerUnit: z.number(),
+    conservationMethod: tables.conservationMethodEnumSchema.optional().nullable(),
+  }),
+  output: harvestPresetSchema,
+  handler: async ({ input, ctx: { harvests } }) => {
+    return harvests.createHarvestPreset(input);
+  },
+});
+
+export const updateHarvestPresetEndpoint = harvestsWrite.build({
+  method: "patch",
+  input: z.object({
+    presetId: z.string(),
+    name: z.string().optional(),
+    unit: tables.harvestUnitsSchema.optional(),
+    kilosPerUnit: z.number().optional(),
+    conservationMethod: tables.conservationMethodEnumSchema.optional().nullable(),
+  }),
+  output: harvestPresetSchema,
+  handler: async ({ input: { presetId, ...data }, ctx: { harvests } }) => {
+    return harvests.updateHarvestPreset(presetId, data);
+  },
+});
+
+export const deleteHarvestPresetEndpoint = harvestsWrite.build({
+  method: "delete",
+  input: z.object({ presetId: z.string() }),
+  output: z.object({}),
+  handler: async ({ input: { presetId }, ctx: { harvests } }) => {
+    await harvests.deleteHarvestPreset(presetId);
+    return {};
   },
 });

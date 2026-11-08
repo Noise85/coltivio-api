@@ -1,33 +1,46 @@
+import { ez } from "express-zod-api";
 import createHttpError from "http-errors";
 import { z } from "zod";
-import * as tables from "../db/schema";
-import { farmEndpointFactory } from "../endpoint-factory";
-import { ez } from "express-zod-api";
-import { ensureDateRange } from "../utils";
+import { ensureDateRange } from "../date-utils";
+import { multiPolygonSchema, tillageActionSchema } from "../db/schema";
+import { permissionFarmEndpoint } from "../endpoint-factory";
 
-const tillagesResponseSchema = tables.selectTillageSchema.merge(
-  z.object({
-    createdAt: ez.dateOut(),
-    date: ez.dateOut(),
-    geometry: tables.multiPolygonSchema,
-    equipment: tables.selectTillageEquipmentSchema.nullable(),
-    plot: tables.selectPlotSchema.omit({ cropRotations: true, geometry: true }),
-  })
-);
+const tillagesRead = permissionFarmEndpoint("field_calendar", "read");
+const tillagesWrite = permissionFarmEndpoint("field_calendar", "write");
 
-const tillageCreateSchema = tables.insertTillageSchema
-  .omit({
-    farmId: true,
-    id: true,
-    createdAt: true,
-    createdBy: true,
-  })
-  .extend({
-    date: ez.dateIn(),
-    geometry: tables.multiPolygonSchema,
-  });
+const plotMinimalSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
 
-export const getTillageByIdEndpoint = farmEndpointFactory.build({
+export const tillageSchema = z.object({
+  id: z.string(),
+  farmId: z.string(),
+  createdAt: ez.dateOut(),
+  createdBy: z.string().nullable(),
+  plotId: z.string(),
+  geometry: multiPolygonSchema,
+  size: z.number(),
+  action: tillageActionSchema,
+  customAction: z.string().nullable(),
+  date: ez.dateOut(),
+  additionalNotes: z.string().nullable(),
+  plot: plotMinimalSchema,
+});
+
+const tillagesResponseSchema = tillageSchema;
+
+const tillageCreateSchema = z.object({
+  plotId: z.string(),
+  geometry: multiPolygonSchema,
+  size: z.number(),
+  action: tillageActionSchema,
+  customAction: z.string().optional(),
+  date: ez.dateIn(),
+  additionalNotes: z.string().optional(),
+});
+
+export const getTillageByIdEndpoint = tillagesRead.build({
   method: "get",
   input: z.object({ tillageId: z.string() }),
   output: tillagesResponseSchema,
@@ -39,7 +52,7 @@ export const getTillageByIdEndpoint = farmEndpointFactory.build({
     return tillage;
   },
 });
-export const getPlotTillagesEndpoint = farmEndpointFactory.build({
+export const getPlotTillagesEndpoint = tillagesRead.build({
   method: "get",
   input: z.object({
     plotId: z.string(),
@@ -48,7 +61,7 @@ export const getPlotTillagesEndpoint = farmEndpointFactory.build({
     result: z.array(tillagesResponseSchema),
     count: z.number(),
   }),
-  handler: async ({ input, ctx: { tillages, farmId } }) => {
+  handler: async ({ input, ctx: { tillages } }) => {
     const result = await tillages.getTillagesForPlot(input.plotId);
     return {
       result,
@@ -57,7 +70,7 @@ export const getPlotTillagesEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const getFarmTillagesEndpoint = farmEndpointFactory.build({
+export const getFarmTillagesEndpoint = tillagesRead.build({
   method: "get",
   input: z.object({
     fromDate: ez.dateIn().optional(),
@@ -77,7 +90,7 @@ export const getFarmTillagesEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const createTillageEndpoint = farmEndpointFactory.build({
+export const createTillageEndpoint = tillagesWrite.build({
   method: "post",
   input: tillageCreateSchema,
   output: tillagesResponseSchema,
@@ -86,18 +99,17 @@ export const createTillageEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const createTillagesEndpoint = farmEndpointFactory.build({
+export const createTillagesEndpoint = tillagesWrite.build({
   method: "post",
   input: z.object({
-    reason: z.enum(tables.tillageReason.enumValues),
-    action: z.enum(tables.tillageAction.enumValues),
+    action: tillageActionSchema,
+    customAction: z.string().optional(),
     date: ez.dateIn(),
     additionalNotes: z.string().optional(),
-    equipmentId: z.string().optional(),
     plots: z
       .object({
         plotId: z.string(),
-        geometry: tables.multiPolygonSchema,
+        geometry: multiPolygonSchema,
         size: z.number(),
       })
       .array(),
@@ -118,18 +130,25 @@ export const createTillagesEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const updateTillageEndpoint = farmEndpointFactory.build({
+export const updateTillageEndpoint = tillagesWrite.build({
   method: "patch",
-  input: tillageCreateSchema.omit({ plotId: true }).partial().extend({
+  // plot, geometry and size can't be changed after creation
+  input: tillageCreateSchema.omit({ plotId: true, geometry: true, size: true }).partial().extend({
     tillageId: z.string(),
+    customAction: z.string().optional().nullable(),
+    additionalNotes: z.string().optional().nullable(),
   }),
   output: tillagesResponseSchema,
-  handler: async ({ input, ctx: { tillages } }) => {
-    return tillages.updateTillage(input.tillageId, input);
+  handler: async ({ input: { tillageId, ...data }, ctx: { tillages } }) => {
+    const tillage = await tillages.updateTillage(tillageId, data);
+    if (!tillage) {
+      throw createHttpError(404, "Tillage not found");
+    }
+    return tillage;
   },
 });
 
-export const deleteTillageEndpoint = farmEndpointFactory.build({
+export const deleteTillageEndpoint = tillagesWrite.build({
   method: "delete",
   input: z.object({ tillageId: z.string() }),
   output: z.object({}),
@@ -139,7 +158,7 @@ export const deleteTillageEndpoint = farmEndpointFactory.build({
   },
 });
 
-export const getTillagesYearsEndpoint = farmEndpointFactory.build({
+export const getTillagesYearsEndpoint = tillagesRead.build({
   method: "get",
   input: z.object({}),
   output: z.object({
@@ -152,5 +171,76 @@ export const getTillagesYearsEndpoint = farmEndpointFactory.build({
       result,
       count: result.length,
     };
+  },
+});
+
+const tillagePresetSchema = z.object({
+  id: z.string(),
+  farmId: z.string(),
+  name: z.string(),
+  action: tillageActionSchema,
+  customAction: z.string().nullable(),
+});
+
+export const getTillagePresetsEndpoint = tillagesRead.build({
+  method: "get",
+  input: z.object({}),
+  output: z.object({
+    result: z.array(tillagePresetSchema),
+    count: z.number(),
+  }),
+  handler: async ({ ctx: { tillages } }) => {
+    const result = await tillages.getTillagePresets();
+    return { result, count: result.length };
+  },
+});
+
+export const getTillagePresetByIdEndpoint = tillagesRead.build({
+  method: "get",
+  input: z.object({ presetId: z.string() }),
+  output: tillagePresetSchema,
+  handler: async ({ input, ctx: { tillages } }) => {
+    const preset = await tillages.getTillagePresetById(input.presetId);
+    if (!preset) {
+      throw createHttpError(404, "Tillage preset not found");
+    }
+    return preset;
+  },
+});
+
+export const createTillagePresetEndpoint = tillagesWrite.build({
+  method: "post",
+  input: z.object({
+    name: z.string(),
+    action: tillageActionSchema,
+    customAction: z.string().optional(),
+  }),
+  output: tillagePresetSchema,
+  handler: async ({ input, ctx: { tillages } }) => {
+    return tillages.createTillagePreset(input);
+  },
+});
+
+export const updateTillagePresetEndpoint = tillagesWrite.build({
+  method: "patch",
+  input: z.object({
+    presetId: z.string(),
+    name: z.string().optional(),
+    action: tillageActionSchema.optional(),
+    customAction: z.string().optional().nullable(),
+  }),
+  output: tillagePresetSchema,
+  handler: async ({ input: { presetId, ...data }, ctx: { tillages } }) => {
+    return tillages.updateTillagePreset(presetId, data);
+  },
+});
+
+export const deleteTillagePresetEndpoint = tillagesWrite.build({
+  method: "delete",
+  input: z.object({ presetId: z.string() }),
+  output: z.object({}),
+  handler: async ({ input: { presetId }, ctx: { tillages } }) => {
+    await tillages.deleteTillagePreset(presetId);
+    return {};
   },
 });

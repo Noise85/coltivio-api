@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "submitter can update own draft change requests" ON "wiki_change_requests";--> statement-breakpoint
+CREATE POLICY "submitter can update own draft change requests" ON "wiki_change_requests" AS PERMISSIVE FOR UPDATE TO "authenticated" USING ("wiki_change_requests"."submitted_by" = (select auth.uid()) and "wiki_change_requests"."status"::text IN ('draft', 'changes_requested')) WITH CHECK ("wiki_change_requests"."submitted_by" = (select auth.uid()));

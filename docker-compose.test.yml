@@ -1,0 +1,42 @@
+services:
+  db:
+    image: supabase/postgres:15.1.1.78
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./scripts/supautils-test.conf:/etc/postgresql-custom/supautils.conf
+      - ./scripts/set-auth-password.sql:/docker-entrypoint-initdb.d/zzz-set-auth-password.sql
+    ports:
+      - "5432"
+    healthcheck:
+      # Via TCP, not the socket: during init the entrypoint runs a socket-only temporary server and then
+      # restarts, so a socket check goes healthy too early and auth dies connecting mid-restart.
+      test: ["CMD-SHELL", "PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -c \"SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin'\" | grep -q 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  auth:
+    image: supabase/gotrue:v2.151.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:postgres@db:5432/postgres
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://localhost:9999
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_DISABLE_SIGNUP: "false"
+    ports:
+      - "9999"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 10

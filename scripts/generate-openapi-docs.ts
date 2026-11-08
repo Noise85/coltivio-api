@@ -16,7 +16,7 @@ const config = createConfig({
     routing, // the same routing and config that you use to start the server
     config,
     version: "1.2.3",
-    title: "Pastorino API",
+    title: "Coltivio API",
     serverUrl: "http://localhost:8000",
     composition: "components", // optional, or "components" for keeping schemas in a separate dedicated section using refs
 

@@ -1,0 +1,535 @@
+{
+  "animal_import": {
+    "error_name_required": "Le nom est obligatoire",
+    "error_sex_required": "Le sexe est obligatoire",
+    "error_sex_unknown": "Valeur de sexe inconnue: {{value}}",
+    "error_dob_required": "La date de naissance est obligatoire",
+    "error_dob_invalid": "Format de date invalide",
+    "error_ear_tag_assigned": "La boucle auriculaire {{number}} est déjà attribuée à un autre animal",
+    "error_missing_columns": "Il manque des colonnes obligatoires dans le fichier: {{columns}}. Veuillez exporter le tableau dans la TVD via «Exporter les données» et téléverser le fichier sans le modifier.",
+    "error_file_unreadable": "Le fichier n'a pas pu être lu. Veuillez téléverser le fichier Excel de la TVD sans le modifier.",
+    "columns": {
+      "earTag": "No de marque auriculaire",
+      "name": "Nom",
+      "sex": "Sexe",
+      "dateOfBirth": "Date de naissance"
+    }
+  },
+  "field_calendar_report": {
+    "mail_subject": "Calendrier des champs",
+    "file_name": "Calendrier des champs {{fromDate}} - {{toDate}}",
+    "mail_content": "Votre calendrier des champs pour la période {{fromDate}} - {{toDate}} se trouve en pièce jointe",
+    "sheet_titles": {
+      "main": "Calendrier des champs {{fromDate}} - {{toDate}}",
+      "main_short": "Vue d'ensemble",
+      "per_plot": "Calendrier des champs {{fromDate}} - {{toDate}}",
+      "per_plot_short": "Par parcelle"
+    }
+  },
+  "common": {
+    "size_ha": "Surface (ha)",
+    "size_a": "Surface (a)",
+    "date": "Date",
+    "from": "Du",
+    "to": "Au",
+    "machinery": "Machine",
+    "device": "Appareil",
+    "reason": "Raison",
+    "action": "Action",
+    "unit": "Unité",
+    "application_unit": "Unité d'épandage",
+    "number_of_application_units": "Nombre d'unités d'épandage",
+    "amount_per_application_unit": "Quantité par unité d'épandage",
+    "total": "Total",
+    "unknown": "Inconnu"
+  },
+  "units": {
+    "long": {
+      "load": "Chargement",
+      "g": "Gramme",
+      "kg": "Kilogramme",
+      "dt": "Décitonnes",
+      "t": "Tonne",
+      "l": "Litre",
+      "ml": "Millilitre",
+      "m3": "Mètre cube"
+    },
+    "short": {
+      "load": "charg.",
+      "g": "g",
+      "kg": "kg",
+      "dt": "dt",
+      "t": "t",
+      "l": "l",
+      "ml": "ml",
+      "m3": "m³"
+    }
+  },
+  "plots": {
+    "plot": "Parcelle",
+    "usage": "Code d'utilisation"
+  },
+  "crops": {
+    "codes": {
+      "-1": "Inconnu",
+      "501": "Orge de printemps",
+      "502": "Orge d'hiver",
+      "504": "Avoine",
+      "505": "Triticale",
+      "506": "Mélange de céréales",
+      "507": "Blé fourrager",
+      "508": "Maïs grain",
+      "510": "Blé dur",
+      "511": "Amidonnier",
+      "512": "Blé de printemps",
+      "513": "Blé d'hiver",
+      "514": "Seigle",
+      "515": "Mélange de céréales",
+      "516": "Épeautre",
+      "519": "Maïs semence",
+      "520": "Riz",
+      "521": "Maïs ensilage et vert",
+      "522": "Betterave sucrière",
+      "523": "Betterave fourragère",
+      "524": "Pomme de terre",
+      "525": "Pomme de terre",
+      "526": "Colza d'hiver",
+      "527": "Colza d'hiver",
+      "528": "Soja",
+      "529": "Riz",
+      "531": "Tournesol",
+      "534": "Lin",
+      "536": "Féverole",
+      "537": "Pois",
+      "538": "Lupin",
+      "539": "Courge à huile",
+      "540": "Pois chiche",
+      "541": "Tabac",
+      "543": "Céréales",
+      "544": "Caméline",
+      "545": "Légumes",
+      "546": "Légumes",
+      "548": "Sarrasin",
+      "551": "Baies",
+      "552": "Matières premières annuelles",
+      "553": "Plantes aromatiques et médicinales",
+      "554": "Plantes ornementales",
+      "556": "Jachère",
+      "557": "Jachère",
+      "559": "Bande de champ",
+      "566": "Pavot",
+      "567": "Carthame",
+      "568": "Lentilles",
+      "569": "Mélange de légumineuses",
+      "570": "Mélange de légumineuses",
+      "572": "Bandes pour insectes utiles",
+      "573": "Moutarde",
+      "574": "Quinoa",
+      "575": "Chanvre",
+      "576": "Chanvre",
+      "577": "Chanvre",
+      "578": "Millet",
+      "579": "Millet",
+      "580": "Sorgho",
+      "581": "Sorgho",
+      "591": "Colza d'hiver",
+      "594": "Terres arables ouvertes",
+      "595": "Terres arables ouvertes",
+      "597": "Terres arables ouvertes",
+      "598": "Terres arables ouvertes",
+      "592": "Tournesol",
+      "601": "Prairie artificielle",
+      "602": "Prairie artificielle",
+      "611": "Prairie naturelle",
+      "612": "Prairie naturelle",
+      "613": "Prairie naturelle",
+      "616": "Prairie naturelle",
+      "617": "Prairie naturelle",
+      "618": "Prairie naturelle",
+      "621": "Prairie naturelle",
+      "622": "Prairie naturelle",
+      "623": "Prairie naturelle",
+      "625": "Prairie naturelle",
+      "631": "Légumineuses fourragères",
+      "632": "Graminées fourragères",
+      "635": "Prairie naturelle",
+      "660": "Prairie naturelle",
+      "693": "Prairie naturelle",
+      "694": "Prairie naturelle",
+      "697": "Prairie naturelle",
+      "698": "Prairie naturelle",
+      "701": "Vignes",
+      "702": "Pommes",
+      "703": "Poires",
+      "704": "Fruits à noyau",
+      "705": "Baies",
+      "706": "Plantes aromatiques et médicinales",
+      "707": "Matière première renouvelable",
+      "708": "Houblon",
+      "709": "Rhubarbe",
+      "710": "Asperges",
+      "711": "Champignons",
+      "712": "Sapins de Noël",
+      "713": "Plants forestiers",
+      "714": "Plantes ornementales",
+      "717": "Vignes",
+      "718": "Truffes",
+      "719": "Mûriers",
+      "720": "Châtaigniers",
+      "721": "Cultures horticoles de plein champ",
+      "722": "Pépinière (vignes)",
+      "723": "Pépinière (fruits et baies)",
+      "724": "Pépinière (rosiers, arbustes ornementaux, etc.)",
+      "725": "Permaculture",
+      "730": "Vergers",
+      "731": "Vergers",
+      "735": "Vignes",
+      "797": "Cultures permanentes",
+      "798": "Cultures permanentes",
+      "801": "Légumes",
+      "802": "Cultures spéciales (serre)",
+      "803": "Cultures horticoles (serre)",
+      "804": "Baies (serre)",
+      "807": "Cultures spéciales",
+      "808": "Cultures horticoles",
+      "810": "Champignons",
+      "811": "Légumes",
+      "812": "Légumes",
+      "813": "Baies",
+      "814": "Baies",
+      "830": "Autres cultures",
+      "847": "Autres cultures",
+      "848": "Autres cultures (serre)",
+      "849": "Autres cultures",
+      "851": "Zone de roseaux",
+      "852": "Haies, buissons champêtres et riverains",
+      "857": "Haies, buissons champêtres et riverains",
+      "858": "Haies, buissons champêtres et riverains",
+      "897": "Autres cultures",
+      "898": "Autres cultures",
+      "901": "Forêt",
+      "902": "Autres cultures",
+      "903": "Autres cultures",
+      "904": "Autres cultures",
+      "905": "Autres cultures",
+      "906": "Autres cultures",
+      "907": "Autres cultures",
+      "908": "Autres cultures",
+      "909": "Autres cultures",
+      "911": "Autres cultures",
+      "921": "Arbres fruitiers champêtres",
+      "922": "Noyers",
+      "923": "Châtaigniers",
+      "924": "Arbres isolés",
+      "926": "Arbres",
+      "927": "Arbres",
+      "928": "Autres cultures",
+      "930": "Prairie naturelle",
+      "933": "Prairie naturelle",
+      "935": "Prairie naturelle",
+      "936": "Zone de roseaux",
+      "950": "Bande de protection des champs",
+      "951": "Céréales",
+      "998": "Autres cultures"
+    },
+    "crop": "Culture",
+    "natural_meadow": "Prairie naturelle",
+    "artificial_meadow": "Prairie artificielle"
+  },
+  "crop_rotations": {
+    "crop_rotation": "Rotation des cultures"
+  },
+  "tillages": {
+    "tillage": "Travail du sol",
+    "reasons": {
+      "soil_loosening": "Ameublissement du sol",
+      "weed_control": "Lutte contre les mauvaises herbes",
+      "other": "Autre"
+    },
+    "actions": {
+      "plowing": "Labourage",
+      "tilling": "Déchaumage",
+      "harrowing": "Hersage",
+      "rolling": "Roulage",
+      "rotavating": "Fraisage",
+      "hoeing": "Binage",
+      "weed_harrowing": "Herse étrille",
+      "flame_weeding": "Désherbage thermique",
+      "custom": "Personnalisé",
+      "other": "Autre"
+    }
+  },
+  "crop_protections": {
+    "crop_protection": "Protection des cultures",
+    "product": "Produit"
+  },
+  "fertilizer_applications": {
+    "fertilizer_application": "Application d'engrais",
+    "fertilizer": "Engrais"
+  },
+  "animal_types": {
+    "goat": "Chèvres",
+    "sheep": "Moutons",
+    "cow": "Bovins",
+    "horse": "Chevaux",
+    "donkey": "Ânes",
+    "pig": "Porcs",
+    "deer": "Cerfs"
+  },
+  "treatment_report": {
+    "file_name": "Journal des traitements {{fromDate}} - {{toDate}}",
+    "title": "Journal des traitements {{fromDate}} - {{toDate}}",
+    "groups": {
+      "treatment": "Traitement",
+      "withdrawal_period": "Délai d'attente",
+      "release_date": "Date de libération"
+    },
+    "columns": {
+      "start": "Début",
+      "end": "Fin",
+      "animal": "Animal",
+      "treatment_reason": "Motif du traitement",
+      "drug": "Médicament vétérinaire",
+      "dose": "Dose",
+      "is_antibiotic": "Antibiotique",
+      "critical_antibiotic": "Antibiotique critique",
+      "antibiogram": "Antibiogramme",
+      "drug_origin": "Origine du médicament",
+      "milk": "Lait",
+      "meat": "Viande",
+      "organs": "Organes"
+    }
+  },
+  "drug_dose_units": {
+    "tablet": "Comprimé",
+    "capsule": "Capsule",
+    "patch": "Patch",
+    "dose": "Dose",
+    "mg": "mg",
+    "mcg": "mcg",
+    "g": "g",
+    "ml": "ml",
+    "drop": "Goutte"
+  },
+  "drug_dose_per_units": {
+    "kg": "kg",
+    "animal": "Animal",
+    "day": "Jour",
+    "total_amount": "Quantité totale"
+  },
+  "outdoor_journal_report": {
+    "file_name": "Journal de pâturage {{fromDate}} - {{toDate}}",
+    "title": "Journal de pâturage {{fromDate}} - {{toDate}}",
+    "day": "Jour",
+    "animal_category": "Catégorie d'animal",
+    "total_pasture": "Pâturage total",
+    "total_exercise_yard": "Paddock total",
+    "months": {
+      "0": "Janvier",
+      "1": "Février",
+      "2": "Mars",
+      "3": "Avril",
+      "4": "Mai",
+      "5": "Juin",
+      "6": "Juillet",
+      "7": "Août",
+      "8": "Septembre",
+      "9": "Octobre",
+      "10": "Novembre",
+      "11": "Décembre"
+    },
+    "meadows_sheet": "Pâturages",
+    "meadow": "Pâturage",
+    "meadow_size": "Surface (a)",
+    "herd": "Troupeau",
+    "type": "Type",
+    "from": "Du",
+    "to": "Au",
+    "days": "Jours",
+    "animal_count": "Nombre d'animaux",
+    "types": {
+      "pasture": "Pâturage",
+      "exercise_yard": "Paddock"
+    }
+  },
+  "application_units": {
+    "load": "Chargement",
+    "bag": "Sac",
+    "total_amount": "Quantité totale",
+    "amount_per_hectare": "Quantité/ha",
+    "other": "Autre"
+  },
+  "field_events": {
+    "harvest": "{{cropName}} récolté",
+    "harvest_with_method": "{{cropName}} récolté ({{conservationMethod}})",
+    "fertilizer_application": "{{fertilizerName}} appliqué",
+    "crop_protection_application": "{{productName}} appliqué"
+  },
+  "harvests": {
+    "harvest": "Récolte",
+    "conservation": "Méthode de conservation",
+    "application_unit": "Unité d'épandage",
+    "produced_units": "Unités produites",
+    "kilos_per_unit": "kg par unité",
+    "total_kilos": "kg total",
+    "labels": {
+      "harvest_units": {
+        "load": "Chargement",
+        "round_bale": "Balle ronde",
+        "square_bale": "Balle carrée",
+        "crate": "Caisse",
+        "total_amount": "Quantité totale",
+        "other": "Unité"
+      },
+      "conservation_method": {
+        "dried": "Foin",
+        "silage": "Ensilage",
+        "haylage": "Haylage",
+        "other": "Autre",
+        "none": "Aucun"
+      }
+    }
+  },
+  "membership_email": {
+    "subtitle": "par AgriColtivio",
+    "product_name": "Adhésion",
+    "valid_until": "Valable jusqu'au",
+    "payment_method": "Moyen de paiement",
+    "amount": "Montant",
+    "contact_question": "Pour toute question, contactez-nous à",
+    "contact_newsletter": "Abonnez-vous à notre newsletter sur",
+    "new": {
+      "subject": "Bienvenue chez AgriColtivio – votre Adhésion est active",
+      "greeting": "Bonjour {{name}}",
+      "welcome": "Bienvenue chez AgriColtivio, l'association derrière Coltivio. Ravis de vous compter parmi nous.",
+      "receipt_title": "Confirmation de votre paiement",
+      "carried_by_members": "Coltivio est financé par les cotisations des membres et par des dons. Aucun investisseur n'attend de rendement, et personne ne fait commerce de vos données. Vous soutenez ainsi une agriculture ouverte et équitable en Suisse.",
+      "benefits_title": "En tant que membre",
+      "benefits": [
+        "Droit de vote à l'assemblée générale : vous décidez de l'orientation de Coltivio",
+        "Support personnel pour vos questions sur l'application, sur l'exploitation ou sur le prochain contrôle",
+        "Accès au point de rencontre, pour échanger avec d'autres paysannes et paysans",
+        "Transparence des finances : le rapport annuel et les comptes sont remis aux membres chaque année"
+      ]
+    },
+    "first_payment": {
+      "subject": "Votre Adhésion a été débitée",
+      "greeting": "Bonjour {{name}}",
+      "intro": "Votre Adhésion a été débitée avec succès. Merci de faire partie d'AgriColtivio !",
+      "receipt_title": "Confirmation de votre paiement"
+    },
+    "renewal": {
+      "subject": "Votre Adhésion Coltivio a été renouvelée",
+      "greeting": "Bonjour {{name}}",
+      "intro": "Nous sommes ravis que vous soyez toujours avec nous ! Votre Adhésion a été renouvelée avec succès — vous continuez à avoir un accès complet à toutes les fonctions de Coltivio.",
+      "receipt_title": "Votre reçu de renouvellement"
+    },
+    "reactivation": {
+      "subject": "Bienvenue à nouveau sur Coltivio",
+      "greeting": "Bonjour {{name}}, bienvenue à nouveau !",
+      "intro": "Nous sommes ravis de vous retrouver. Votre Adhésion est à nouveau active — vous avez un accès complet à toutes les fonctions jusqu'au {{date}}."
+    },
+    "expiry_reminder": {
+      "subject": "Votre adhésion Coltivio a expiré",
+      "greeting": "Bonjour {{name}}",
+      "intro": "Votre adhésion a expiré le {{date}}. Vous avez encore 10 jours d'accès à toutes les fonctions de Coltivio — veuillez renouveler votre adhésion pour conserver l'accès complet.",
+      "cta": "Renouveler l'adhésion"
+    },
+    "payment_failed": {
+      "subject": "Paiement échoué – veuillez mettre à jour votre moyen de paiement",
+      "greeting": "Bonjour {{name}}",
+      "intro": "Le renouvellement automatique de votre adhésion Coltivio a échoué. Vous avez encore 10 jours d'accès — veuillez mettre à jour votre moyen de paiement pour éviter une interruption.",
+      "cta": "Mettre à jour le moyen de paiement"
+    },
+    "access_lost": {
+      "subject": "Votre accès à Coltivio a été suspendu",
+      "greeting": "Bonjour {{name}}",
+      "intro": "Votre adhésion Coltivio a expiré et votre accès aux fonctionnalités de l'application a été temporairement suspendu. Vous pouvez encore renouveler votre adhésion dans les 20 jours pour retrouver un accès complet.",
+      "cta": "Restaurer l'adhésion"
+    },
+    "membership_ended": {
+      "subject": "Votre adhésion Coltivio est terminée",
+      "greeting": "Bonjour {{name}}",
+      "intro": "Votre adhésion chez AgriColtivio est maintenant terminée. Nous vous remercions sincèrement pour le temps que vous avez fait partie de notre communauté — ce fut un plaisir de vous accompagner, vous et votre exploitation. Vos données sont conservées et vous pouvez revenir à tout moment.",
+      "cta": "Rejoindre à nouveau"
+    },
+    "cancellation": {
+      "subject": "Votre adhésion Coltivio a été résiliée",
+      "greeting": "Bonjour {{name}}",
+      "intro": "Nous avons bien reçu votre résiliation, qui prend effet immédiatement. Vous avez déjà payé jusqu'au {{date}} — vous pouvez annuler votre résiliation jusqu'à cette date.",
+      "reactivate_hint": "Si vous changez d'avis, vous pouvez annuler votre résiliation dans l'application.",
+      "cta": "Réactiver l'adhésion"
+    }
+  },
+  "donation_email": {
+    "subject": "Merci pour votre don à AgriColtivio",
+    "greeting": "Bonjour {{name}}",
+    "greeting_anonymous": "Bonjour",
+    "intro": "Merci pour votre don ! Vous soutenez ainsi une agriculture ouverte et équitable en Suisse.",
+    "receipt_title": "Confirmation de votre don",
+    "product_name": "Don à Coltivio",
+    "amount": "Montant",
+    "subtitle": "de AgriColtivio"
+  },
+  "verification_email": {
+    "subject": "Confirmez votre adresse e-mail",
+    "subtitle": "de AgriColtivio",
+    "greeting": "Bonjour {{name}}",
+    "intro": "Ravis de vous compter parmi nous. Confirmez rapidement votre adresse e-mail pour que nous puissions vous joindre en cas de questions sur votre exploitation et pour que vous puissiez réinitialiser votre mot de passe si vous l'oubliez un jour.",
+    "cta": "Confirmer l'e-mail",
+    "expiry_note": "Le lien est valable 14 jours.",
+    "ignore_note": "Si vous ne vous êtes pas inscrit à Coltivio, vous pouvez ignorer cet e-mail."
+  },
+  "welcome_email": {
+    "subject": "Bienvenue chez Coltivio",
+    "subtitle": "de AgriColtivio",
+    "greeting": "Bonjour {{name}}",
+    "intro": "Votre adresse e-mail est confirmée. Coltivio vous est maintenant entièrement ouvert : surfaces et calendrier des champs, cheptel et journal des traitements, tâches et votre wiki, tout se saisit sur l'exploitation plutôt que le soir devant l'ordinateur.",
+    "verein_title": "Une association se tient derrière l'application",
+    "verein_body": "Coltivio est développé et exploité par l'association AgriColtivio, une association d'utilité publique de droit suisse dont le siège est à Braggio, dans le val Calanca. L'association est politiquement indépendante et ne poursuit aucun intérêt commercial propre. Coltivio est financé par les cotisations des membres et par des dons. Aucun investisseur n'attend de rendement, et personne ne fait commerce de vos données.",
+    "open_source": "Le code source est ouvert et vos données sont stockées sur des serveurs situés dans l'UE.",
+    "membership_title": "Devenir membre",
+    "membership_body": "En tant que membre, vous décidez à l'assemblée générale de l'orientation du logiciel. Vous nous joignez directement pour vos questions sur l'application, sur l'exploitation ou sur le prochain contrôle, et le point de rencontre dans la WebApp vous est ouvert pour échanger avec d'autres paysannes et paysans.",
+    "membership_price": "L'adhésion coûte CHF 75 par an.",
+    "membership_cta": "Devenir membre",
+    "contact": "Pour toute question, écrivez-nous à"
+  },
+  "farm_invite": {
+    "subject": "Vous avez été invité à rejoindre {{farmName}} sur Coltivio",
+    "body": "Vous avez été invité à rejoindre <strong>{{farmName}}</strong> sur Coltivio.",
+    "code_label": "Votre code d'invitation",
+    "expiry": "Ce code expire dans 7 jours."
+  },
+  "product_units": {
+    "kg": "kg",
+    "g": "g",
+    "piece": "pièce",
+    "bunch": "botte",
+    "liter": "litre"
+  },
+  "animals_report": {
+    "file_name": "Rapport animaux {{fromDate}} - {{toDate}}"
+  },
+  "task_due_push": {
+    "title": "À faire aujourd'hui"
+  },
+  "forum_email": {
+    "subtitle": "Treffpunkt",
+    "new_thread_subject": "[Treffpunkt] {{title}}",
+    "reply_subject": "Re: [Treffpunkt] {{title}}",
+    "new_thread_intro": "{{author}} a ouvert une nouvelle contribution dans le Treffpunkt :",
+    "reply_intro": "{{author}} a répondu à cette contribution :",
+    "unknown_author": "Quelqu'un",
+    "cta": "Ouvrir la contribution",
+    "reason_moderator": "Tu reçois cet e-mail parce que tu modères le Treffpunkt.",
+    "reason_subscribed": "Tu reçois cet e-mail parce que tu suis cette contribution. Tu peux désactiver les notifications dans la contribution."
+  },
+  "parasite_checks": {
+    "follow_up_task_name": "Contrôle infestation vermineuse",
+    "methods": {
+      "famacha": "FAMACHA",
+      "fecal_egg_count": "Coprologie"
+    },
+    "follow_up_task_name_with_name": "Contrôle infestation vermineuse – {{name}}"
+  }
+}

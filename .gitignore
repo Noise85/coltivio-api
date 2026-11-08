@@ -124,6 +124,7 @@ dist
 .vscode-test
 
 .idea
+.DS_Store
 
 # yarn v2
 .yarn/cache
@@ -135,3 +136,11 @@ dist
 __generated__
 # Sentry Config File
 .sentryclirc
+
+# Supabase scratch queries
+supabase/snippets/
+
+# Database backups — contain real user data, never commit
+backup_data_*.sql
+backups/
+

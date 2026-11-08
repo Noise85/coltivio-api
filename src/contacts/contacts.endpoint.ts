@@ -1,66 +1,116 @@
-// import { z } from "zod";
-// import { sessionEndpointFactory } from "../endpoint-factory";
-// import * as tables from "../db/schema";
-// import {
-//   createContact,
-//   deleteContact,
-//   getContactById,
-//   getContactsForFarm,
-//   updateContact,
-// } from "./contacts";
-// import createHttpError from "http-errors";
+import createHttpError from "http-errors";
+import { z } from "zod";
+import { preferredCommunicationSchema } from "../db/schema";
+import { permissionFarmEndpoint } from "../endpoint-factory";
 
-// export const getContactsForFarmEndpoint = sessionEndpointFactory.build({
-//   method: "get",
-//   input: z.object({ farmId: z.string() }),
-//   output: z.object({
-//     result: z.array(tables.selectContactSchema),
-//     count: z.number(),
-//   }),
-//   handler: async ({ input, ctx }) => {
-//     const contacts = await getContactsForFarm(input.farmId);
+const contactsRead = permissionFarmEndpoint("commerce", "read");
+const contactsWrite = permissionFarmEndpoint("commerce", "write");
+import { paymentSchema } from "../payments/payment-schema";
+import { sponsorshipWithRelationsSchema } from "../sponsorships/sponsorships.endpoint";
+import { orderSchema } from "../orders/orders.endpoint";
+import { animalSchema } from "../animals/animals.endpoint";
 
-//     return { result: contacts, count: contacts.length };
-//   },
-// });
+export const contactSchema = z.object({
+  id: z.string(),
+  farmId: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  street: z.string().nullable(),
+  city: z.string().nullable(),
+  zip: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  preferredCommunication: preferredCommunicationSchema.nullable(),
+  labels: z.array(z.string()),
+});
 
-// export const getContactByIdEndpoint = sessionEndpointFactory.build({
-//   method: "get",
-//   input: z.object({ contactId: z.string() }),
-//   output: tables.selectContactSchema,
-//   handler: async ({ input, ctx }) => {
-//     const contact = await getContactById(input.contactId);
-//     if (!contact) {
-//       throw createHttpError(404, "Contact not found");
-//     }
-//     return contact;
-//   },
-// });
+export const contactWithRelationsSchema = contactSchema.extend({
+  get payments() {
+    return z.array(paymentSchema);
+  },
+  get sponsorships() {
+    return z.array(
+      sponsorshipWithRelationsSchema
+        .omit({ contact: true, payments: true })
+        .extend({ animal: animalSchema.omit({ earTag: true }) })
+    );
+  },
+  get orders() {
+    return z.array(orderSchema);
+  },
+});
 
-// export const createContactEndpoint = sessionEndpointFactory.build({
-//   method: "post",
-//   input: tables.insertContactSchema,
-//   output: tables.selectContactSchema,
-//   handler: async ({ input, ctx }) => {
-//     return createContact(input);
-//   },
-// });
+const createContactSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  street: z.string().optional(),
+  city: z.string().optional(),
+  zip: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  preferredCommunication: preferredCommunicationSchema.optional(),
+  labels: z.array(z.string()).default([]),
+});
 
-// export const updateContactEndpoint = sessionEndpointFactory.build({
-//   method: "patch",
-//   input: tables.updateContactSchema,
-//   output: tables.selectContactSchema,
-//   handler: async ({ input, ctx }) => {
-//     return updateContact(input.id, input);
-//   },
-// });
+const updateContactSchema = createContactSchema.partial();
 
-// export const deleteContactEndpoint = sessionEndpointFactory.build({
-//   method: "delete",
-//   input: z.object({ contactId: z.string() }),
-//   output: z.object({}),
-//   handler: async ({ input: { contactId }, ctx }) => {
-//     await deleteContact(contactId);
-//     return {};
-//   },
-// });
+export const getContactByIdEndpoint = contactsRead.build({
+  method: "get",
+  input: z.object({ contactId: z.string() }),
+  output: contactWithRelationsSchema,
+  handler: async ({ input, ctx: { contacts } }) => {
+    const contact = await contacts.getContactById(input.contactId);
+    if (!contact) {
+      throw createHttpError(404, "Contact not found");
+    }
+    return contact;
+  },
+});
+
+export const getFarmContactsEndpoint = contactsRead.build({
+  method: "get",
+  input: z.object({}),
+  output: z.object({
+    result: z.array(contactSchema),
+    count: z.number(),
+  }),
+  handler: async ({ ctx: { contacts, farmId } }) => {
+    const result = await contacts.getContactsForFarm(farmId);
+    return {
+      result,
+      count: result.length,
+    };
+  },
+});
+
+export const createContactEndpoint = contactsWrite.build({
+  method: "post",
+  input: createContactSchema,
+  output: contactSchema,
+  handler: async ({ input, ctx: { contacts } }) => {
+    console.log("CREATE CONTACT");
+    return contacts.createContact(input);
+  },
+});
+
+export const updateContactEndpoint = contactsWrite.build({
+  method: "patch",
+  input: updateContactSchema.extend({
+    contactId: z.string(),
+  }),
+  output: contactSchema,
+  handler: async ({ input, ctx: { contacts } }) => {
+    const { contactId, ...data } = input;
+    return contacts.updateContact(contactId, data);
+  },
+});
+
+export const deleteContactEndpoint = contactsWrite.build({
+  method: "delete",
+  input: z.object({ contactId: z.string() }),
+  output: z.object({}),
+  handler: async ({ input: { contactId }, ctx: { contacts } }) => {
+    await contacts.deleteContact(contactId);
+    return {};
+  },
+});

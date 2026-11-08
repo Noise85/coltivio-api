@@ -48,8 +48,7 @@ interface Properties {
 }
 
 // Config
-const BASE_URL =
-  "https://api3.geo.admin.ch/rest/services/api/MapServer/identify";
+const BASE_URL = "https://api3.geo.admin.ch/rest/services/api/MapServer/identify";
 
 function buildUrl(geometry: string, offset: string = "0") {
   const params = new URLSearchParams({
@@ -64,9 +63,7 @@ function buildUrl(geometry: string, offset: string = "0") {
   return `${BASE_URL}?${params.toString()}`;
 }
 
-export async function getParcelsForEnvelopes(
-  envelopes: string[]
-): Promise<GeoAdminParcels[]> {
+export async function getParcelsForEnvelopes(envelopes: string[]): Promise<GeoAdminParcels[]> {
   const parcels: GeoAdminParcels[] = [];
   for (const envelope of envelopes) {
     const url = buildUrl(envelope);

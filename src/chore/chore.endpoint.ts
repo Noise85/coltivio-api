@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import { defaultEndpointsFactory } from "express-zod-api";
 import { z } from "zod";
 

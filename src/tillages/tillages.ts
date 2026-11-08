@@ -1,36 +1,37 @@
 import { eq, sql } from "drizzle-orm";
 import { RlsDb } from "../db/db";
-import { farmIdColumnValue, tillages } from "../db/schema";
+import { farmIdColumnValue, tillages, tillagePresets } from "../db/schema";
 import { MultiPolygon } from "../geo/geojson";
-import { TillageEquipment } from "../equipment/tillage-equipment";
 import { Plot } from "../plots/plots";
 
-export type TillageCreateInput = Omit<
-  typeof tillages.$inferInsert,
-  "id" | "farmId" | "geometry"
-> & {
+export type TillagePreset = typeof tillagePresets.$inferSelect;
+export type TillagePresetCreateInput = Omit<typeof tillagePresets.$inferInsert, "id" | "farmId">;
+export type TillagePresetUpdateInput = Partial<TillagePresetCreateInput>;
+
+export type TillageCreateInput = Omit<typeof tillages.$inferInsert, "id" | "farmId" | "geometry"> & {
   geometry: MultiPolygon;
 };
 
 export type TillageBatchCreateInput = {
   createdBy: string;
   date: Date;
-  reason: Tillage["reason"];
   action: Tillage["action"];
-  additionalNotes?: string;
-  equipmentId?: string;
+  customAction?: string;
+  additionalNotes?: string | null;
   plots: {
     plotId: string;
     geometry: MultiPolygon;
     size: number;
   }[];
 };
-export type TillageUpdateInput = Partial<TillageCreateInput>;
+// plot, geometry and size are fixed once an entry is created; only values can be edited
+export type TillageUpdateInput = Partial<
+  Pick<typeof tillages.$inferInsert, "action" | "customAction" | "date" | "additionalNotes">
+>;
 
 export type Tillage = typeof tillages.$inferSelect & {
-  equipment: TillageEquipment | null;
   geometry: MultiPolygon;
-  plot: Omit<Plot, "cropRotations" | "geometry">;
+  plot: Omit<Plot, "currentCropRotation" | "geometry">;
 };
 
 export function tillagesApi(rlsDb: RlsDb) {
@@ -50,10 +51,7 @@ export function tillagesApi(rlsDb: RlsDb) {
       const tillage = await this.getTillageById(result.id);
       return tillage!;
     },
-    async createTillages({
-      plots,
-      ...base
-    }: TillageBatchCreateInput): Promise<Tillage[]> {
+    async createTillages({ plots, ...base }: TillageBatchCreateInput): Promise<Tillage[]> {
       const result = await rlsDb.rls(async (tx) => {
         return tx
           .insert(tillages)
@@ -67,23 +65,17 @@ export function tillagesApi(rlsDb: RlsDb) {
           )
           .returning({ id: tillages.id });
       });
-      return this.getTillagesByIds(
-        result.map((application) => application.id)
-      )!;
+      return this.getTillagesByIds(result.map((application) => application.id))!;
     },
     async getTillagesByIds(ids: string[]): Promise<Tillage[]> {
       return rlsDb.rls(async (tx) => {
         return tx.query.tillages.findMany({
           where: { id: { in: ids } },
           with: {
-            equipment: true,
             plot: true,
           },
           extras: {
-            geometry: (t) =>
-              sql<MultiPolygon>`ST_AsGeoJSON(${t.geometry})::json`.as(
-                "geometry",
-              ),
+            geometry: (t) => sql<MultiPolygon>`ST_AsGeoJSON(${t.geometry})::json`.as("geometry"),
           },
         });
       });
@@ -93,23 +85,15 @@ export function tillagesApi(rlsDb: RlsDb) {
         return tx.query.tillages.findFirst({
           where: { id },
           with: {
-            equipment: true,
             plot: true,
           },
           extras: {
-            geometry: (t) =>
-              sql<MultiPolygon>`ST_AsGeoJSON(${t.geometry})::json`.as(
-                "geometry",
-              ),
+            geometry: (t) => sql<MultiPolygon>`ST_AsGeoJSON(${t.geometry})::json`.as("geometry"),
           },
         });
       });
     },
-    async getTillagesForFarm(
-      farmId: string,
-      fromDate: Date,
-      toDate: Date
-    ): Promise<Tillage[]> {
+    async getTillagesForFarm(farmId: string, fromDate: Date, toDate: Date): Promise<Tillage[]> {
       return rlsDb.rls(async (tx) => {
         return tx.query.tillages.findMany({
           where: {
@@ -117,14 +101,10 @@ export function tillagesApi(rlsDb: RlsDb) {
             AND: [{ date: { gte: fromDate } }, { date: { lte: toDate } }],
           },
           with: {
-            equipment: true,
             plot: true,
           },
           extras: {
-            geometry: (t) =>
-              sql<MultiPolygon>`ST_AsGeoJSON(${t.geometry})::json`.as(
-                "geometry",
-              ),
+            geometry: (t) => sql<MultiPolygon>`ST_AsGeoJSON(${t.geometry})::json`.as("geometry"),
           },
           orderBy: { date: "desc" },
         });
@@ -135,37 +115,25 @@ export function tillagesApi(rlsDb: RlsDb) {
         return tx.query.tillages.findMany({
           where: { plotId },
           with: {
-            equipment: true,
             plot: true,
           },
           extras: {
-            geometry: (t) =>
-              sql<MultiPolygon>`ST_AsGeoJSON(${t.geometry})::json`.as(
-                "geometry",
-              ),
+            geometry: (t) => sql<MultiPolygon>`ST_AsGeoJSON(${t.geometry})::json`.as("geometry"),
           },
           orderBy: { date: "desc" },
         });
       });
     },
-    async updateTillage(
-      id: string,
-      data: TillageUpdateInput
-    ): Promise<Tillage> {
-      const result = await rlsDb.rls(async (tx) => {
-        const geometry = data.geometry
-          ? sql<MultiPolygon>`ST_GeomFromGeoJSON(${JSON.stringify(data.geometry)})`
-          : undefined;
-
-        const [tillage] = await tx
-          .update(tillages)
-          .set({ ...data, geometry })
-          .where(eq(tillages.id, id))
-          .returning();
-        return tillage;
-      });
-      const tillage = await this.getTillageById(result.id);
-      return tillage!;
+    async updateTillage(id: string, data: TillageUpdateInput): Promise<Tillage | undefined> {
+      const { action, customAction, date, additionalNotes } = data;
+      const values = { action, customAction, date, additionalNotes };
+      const hasValues = Object.values(values).some((value) => value !== undefined);
+      if (hasValues) {
+        await rlsDb.rls(async (tx) => {
+          await tx.update(tillages).set(values).where(eq(tillages.id, id));
+        });
+      }
+      return this.getTillageById(id);
     },
     async deleteTillage(id: string): Promise<void> {
       return rlsDb.rls(async (tx) => {
@@ -181,13 +149,39 @@ export function tillagesApi(rlsDb: RlsDb) {
           orderBy: { date: "desc" },
         });
 
-        return Array.from(
-          new Set(
-            result.map((application) =>
-              application.date.getFullYear().toString()
-            )
-          )
-        );
+        return Array.from(new Set(result.map((application) => application.date.getFullYear().toString())));
+      });
+    },
+    async createTillagePreset(input: TillagePresetCreateInput): Promise<TillagePreset> {
+      return rlsDb.rls(async (tx) => {
+        const [preset] = await tx
+          .insert(tillagePresets)
+          .values({ ...farmIdColumnValue, ...input })
+          .returning();
+        return preset;
+      });
+    },
+    async getTillagePresets(): Promise<TillagePreset[]> {
+      return rlsDb.rls(async (tx) => {
+        return tx.query.tillagePresets.findMany({
+          orderBy: { name: "asc" },
+        });
+      });
+    },
+    async getTillagePresetById(id: string): Promise<TillagePreset | undefined> {
+      return rlsDb.rls(async (tx) => {
+        return tx.query.tillagePresets.findFirst({ where: { id } });
+      });
+    },
+    async updateTillagePreset(id: string, input: TillagePresetUpdateInput): Promise<TillagePreset> {
+      return rlsDb.rls(async (tx) => {
+        const [preset] = await tx.update(tillagePresets).set(input).where(eq(tillagePresets.id, id)).returning();
+        return preset;
+      });
+    },
+    async deleteTillagePreset(id: string): Promise<void> {
+      return rlsDb.rls(async (tx) => {
+        await tx.delete(tillagePresets).where(eq(tillagePresets.id, id));
       });
     },
   };
