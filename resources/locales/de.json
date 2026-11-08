@@ -1,5 +1,17 @@
 {
+  "animal_validation": {
+    "usage_species": "Die Nutzung milk ist für die Tierart {{species}} nicht erlaubt.",
+    "birth_future": "dateOfBirth darf nicht in der Zukunft liegen.",
+    "death_before_birth": "dateOfDeath muss am oder nach dateOfBirth liegen.",
+    "death_reason_date": "deathReason erfordert dateOfDeath.",
+    "parent_missing": "{{field}} muss auf ein zugängliches Tier dieses Betriebs verweisen.",
+    "parent_self": "{{field}} darf nicht auf das Tier selbst verweisen.",
+    "parent_sex": "{{field}} muss auf ein Tier mit Geschlecht {{sex}} verweisen.",
+    "parent_species": "{{field}} muss auf ein Tier derselben Tierart verweisen.",
+    "parent_birth": "{{field}} muss auf ein vor dem Nachkommen geborenes Tier verweisen."
+  },
   "animal_import": {
+    "error_merge_animal_not_found": "Das für die Zusammenführung ausgewählte Tier wurde nicht gefunden.",
     "error_name_required": "Name ist erforderlich",
     "error_sex_required": "Geschlecht ist erforderlich",
     "error_sex_unknown": "Unbekannter Geschlechtswert: {{value}}",

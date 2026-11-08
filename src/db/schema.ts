@@ -983,7 +983,8 @@ export const animalSex = pgEnum("animal_sex", ["male", "female"]);
 
 export const animalType = pgEnum("animal_type", ["goat", "sheep", "cow", "horse", "donkey", "pig", "deer"]);
 
-export const deathReason = pgEnum("death_reason", ["died", "slaughtered"]);
+// Sid must add this enum value to PostgreSQL before deploying writes using "unknown".
+export const deathReason = pgEnum("death_reason", ["died", "slaughtered", "unknown"]);
 
 export const productCategory = pgEnum("product_category", ["meat", "vegetables", "dairy", "eggs", "other"]);
 

@@ -1,4 +1,15 @@
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import {
+  AnimalValidationState,
+  AnimalLifecycleFields,
+  ImportAnimalValidationIssue,
+  assertAnimalConsistency,
+  hasAssignedEarTagConflict,
+  resolveAnimalDeathFields,
+  validateAnimalConsistency,
+  validateImportAnimalPrerequisites,
+} from "./animal-validation";
 import { addYears } from "date-fns";
 import createHttpError from "http-errors";
 import { TFunction } from "i18next";
@@ -459,7 +470,7 @@ export type ParsedImportRow = {
   dateOfBirth: Date | null;
   usage: AnimalUsage | null;
   dateOfDeath: Date | null;
-  deathReason: AnimalDeathReason | null; // preset to "died" when dateOfDeath is present
+  deathReason: AnimalDeathReason | null; // preset to "unknown" when dateOfDeath is present
   motherEarTagNumber: string | null;
   fatherEarTagNumber: string | null;
   parseErrors: string[]; // empty means the row is importable as-is
@@ -514,11 +525,63 @@ export type AnimalWithRelations = Animal & {
   customOutdoorJournalCategories: CustomOutdoorJournalCategory[];
 };
 
+// Validate the effective final batch before any writes. Queries stay in the selected-farm RLS transaction.
+async function validateAnimalUpdates<T extends { id: string } & AnimalUpdateInput>(
+  tx: Transaction,
+  updates: T[],
+  t: TFunction
+) {
+  const current = await tx.query.animals.findMany({ where: { id: { in: updates.map(({ id }) => id) } } });
+  const previous = new Map<string, AnimalValidationState>(current.map((animal) => [animal.id, animal]));
+  const next = new Map(previous);
+  const normalizedUpdates: T[] = [];
+  for (const update of updates) {
+    const animal = next.get(update.id);
+    const normalized = { ...update, ...resolveAnimalDeathFields(update, animal) };
+    normalizedUpdates.push(normalized);
+    if (animal) {
+      const definedPatch = Object.fromEntries(
+        Object.entries(normalized).filter(([key, value]) => key !== "id" && value !== undefined)
+      );
+      next.set(update.id, { ...animal, ...definedPatch });
+    }
+  }
+  const parentIds = new Set<string>();
+  for (const animal of [...previous.values(), ...next.values()]) {
+    if (animal.motherId) parentIds.add(animal.motherId);
+    if (animal.fatherId) parentIds.add(animal.fatherId);
+  }
+  const parents = parentIds.size
+    ? await tx.query.animals.findMany({ where: { id: { in: [...parentIds] } } })
+    : [];
+  const previousParents = new Map<string, AnimalValidationState>(parents.map((animal) => [animal.id, animal]));
+  const finalParents = new Map(previousParents);
+  for (const [id, animal] of next) finalParents.set(id, animal);
+  const today = todayUtcDay();
+  for (const [id, animal] of next) {
+    assertAnimalConsistency(animal, previous.get(id), finalParents, t, previousParents, today);
+  }
+  return normalizedUpdates;
+}
+
 export function animalsApi(rlsDb: RlsDb, t: TFunction) {
   return {
     async createAnimal(input: AnimalCreateInput & { herdEffectiveDate?: Date | null }): Promise<Animal> {
-      const { herdEffectiveDate, ...animalInput } = input;
+      const { herdEffectiveDate, ...data } = input;
+      const animalInput = { ...data, ...resolveAnimalDeathFields(data) };
       const result = await rlsDb.rls(async (tx) => {
+        const parentIds = [animalInput.motherId, animalInput.fatherId].filter((id): id is string => !!id);
+        const parents = parentIds.length
+          ? await tx.query.animals.findMany({ where: { id: { in: parentIds } } })
+          : [];
+        assertAnimalConsistency(
+          animalInput,
+          undefined,
+          new Map(parents.map((animal) => [animal.id, animal])),
+          t,
+          undefined,
+          todayUtcDay()
+        );
         const [result] = await tx
           .insert(tables.animals)
           .values({
@@ -671,7 +734,8 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
       data: Array<AnimalUpdateInput & { id: string; herdEffectiveDate?: Date | null }>
     ): Promise<Animal[]> {
       await rlsDb.rls(async (tx) => {
-        for (const { id, herdId, herdEffectiveDate, ...animal } of data) {
+        const normalized = await validateAnimalUpdates(tx, data, t);
+        for (const { id, herdId, herdEffectiveDate, ...animal } of normalized) {
           if (Object.keys(animal).length > 0) {
             await tx.update(tables.animals).set(animal).where(eq(tables.animals.id, id));
           }
@@ -701,14 +765,16 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
     async updateAnimal(id: string, input: AnimalUpdateInput & { herdEffectiveDate?: Date | null }): Promise<Animal> {
       const { herdId, herdEffectiveDate, ...data } = input;
       const result = await rlsDb.rls(async (tx) => {
+        const [normalized] = await validateAnimalUpdates(tx, [{ id, ...data }], t);
+        const { id: animalId, ...normalizedData } = normalized;
         const [result] =
-          Object.keys(data).length > 0
+          Object.keys(normalizedData).length > 0
             ? await tx
                 .update(tables.animals)
-                .set(data)
-                .where(eq(tables.animals.id, id))
+                .set(normalizedData)
+                .where(eq(tables.animals.id, animalId))
                 .returning({ id: tables.animals.id })
-            : await tx.select({ id: tables.animals.id }).from(tables.animals).where(eq(tables.animals.id, id));
+            : await tx.select({ id: tables.animals.id }).from(tables.animals).where(eq(tables.animals.id, animalId));
 
         // Herd changes go through memberships so the outdoor journal history stays correct
         if (result && herdId !== undefined) {
@@ -736,7 +802,11 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
 
     async batchUpdateAnimals(animalIds: string[], data: BatchUpdateAnimalInput): Promise<Animal[]> {
       return rlsDb.rls(async (tx) => {
-        await tx.update(tables.animals).set(data).where(inArray(tables.animals.id, animalIds));
+        const normalized = await validateAnimalUpdates(tx, animalIds.map((id) => ({ id, ...data })), t);
+        // Each target can retain a different known reason when the common patch supplies a date only.
+        for (const { id, ...patch } of normalized) {
+          await tx.update(tables.animals).set(patch).where(eq(tables.animals.id, id));
+        }
         return tx.query.animals.findMany({
           where: { id: { in: animalIds } },
           with: {
@@ -1246,35 +1316,7 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
           : null;
 
         const resolvedName = name ?? earTagNumber;
-        if (!resolvedName) {
-          skippedRows.push({
-            row: rowNumber,
-            earTagNumber,
-            name,
-            reason: "Name is required",
-          });
-          return;
-        }
-
-        if (!sexValue) {
-          skippedRows.push({
-            row: rowNumber,
-            earTagNumber,
-            name,
-            reason: "Sex is required",
-          });
-          return;
-        }
-        const sex = SEX_MAP[sexValue];
-        if (!sex) {
-          skippedRows.push({
-            row: rowNumber,
-            earTagNumber,
-            name,
-            reason: `Unknown sex value: ${sexValue}`,
-          });
-          return;
-        }
+        const sex = sexValue ? SEX_MAP[sexValue] ?? null : null;
 
         // Parse usage — default to "other" if column not present or value not recognized
         let usage: AnimalUsage = "other";
@@ -1285,41 +1327,40 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
           }
         }
 
-        let dateOfBirth: Date;
+        let dateOfBirth: Date | null = null;
         if (dobCell.value) {
           if (dobCell.value instanceof Date) {
             dateOfBirth = dobCell.value;
           } else if (typeof dobCell.value === "string") {
-            const parsed = parseDateString(dobCell.value);
-            if (!parsed) {
-              skippedRows.push({
-                row: rowNumber,
-                earTagNumber,
-                name,
-                reason: "Invalid date format",
-              });
-              return;
-            }
-            dateOfBirth = parsed;
+            dateOfBirth = parseDateString(dobCell.value);
           } else if (typeof dobCell.value === "number") {
             // Excel date serial number
             dateOfBirth = new Date(Math.round((dobCell.value - 25569) * 86400 * 1000));
-          } else {
-            skippedRows.push({
-              row: rowNumber,
-              earTagNumber,
-              name,
-              reason: "Invalid date format",
-            });
-            return;
           }
-        } else {
-          skippedRows.push({
-            row: rowNumber,
-            earTagNumber,
-            name,
-            reason: "Date of birth is required",
-          });
+        }
+        const prerequisites = validateImportAnimalPrerequisites({
+          name: resolvedName, sexValue, sex, dateOfBirth, birthDatePresent: !!dobCell.value,
+        });
+        if (prerequisites.length > 0) {
+          // The legacy endpoint reports the first issue using its established English literals.
+          const reasons: Record<ImportAnimalValidationIssue["key"], string> = {
+            "animal_import.error_name_required": "Name is required",
+            "animal_import.error_sex_required": "Sex is required",
+            "animal_import.error_sex_unknown": `Unknown sex value: ${sexValue}`,
+            "animal_import.error_dob_required": "Date of birth is required",
+            "animal_import.error_dob_invalid": "Invalid date format",
+          };
+          skippedRows.push({ row: rowNumber, earTagNumber, name, reason: reasons[prerequisites[0].key] });
+          return;
+        }
+
+        try {
+          assertAnimalConsistency(
+            { type, sex: sex!, usage, dateOfBirth: dateOfBirth! }, undefined, new Map(), t, undefined, todayUtcDay()
+          );
+        } catch (error) {
+          if (!createHttpError.isHttpError(error) || error.status !== 400) throw error;
+          skippedRows.push({ row: rowNumber, earTagNumber, name, reason: error.message });
           return;
         }
 
@@ -1328,7 +1369,7 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
         if (earTagNumber) {
           const existingTag = earTagByNumber.get(earTagNumber.toLowerCase());
           if (existingTag) {
-            if (existingTag.animal) {
+            if (hasAssignedEarTagConflict(existingTag.animal?.id)) {
               skippedRows.push({
                 row: rowNumber,
                 earTagNumber,
@@ -1344,11 +1385,11 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
         }
 
         validAnimals.push({
-          name: resolvedName,
+          name: resolvedName!,
           type,
-          sex,
+          sex: sex!,
           usage,
-          dateOfBirth,
+          dateOfBirth: dateOfBirth!,
           earTagId,
           earTagNumber: earTagNumber || undefined,
           registered: true,
@@ -1472,39 +1513,28 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
           ? row.getCell(columnIndex["fatherEarTag"]).text?.trim() || null
           : null;
 
-        const parseErrors: string[] = [];
-
         const resolvedName = name ?? earTagNumber;
-        if (!resolvedName) parseErrors.push(t("animal_import.error_name_required"));
-
-        let sex: "male" | "female" | null = null;
-        if (!sexValue) {
-          parseErrors.push(t("animal_import.error_sex_required"));
-        } else {
-          sex = SEX_MAP[sexValue] ?? null;
-          if (!sex) parseErrors.push(t("animal_import.error_sex_unknown", { value: sexValue }));
-        }
+        const sex = sexValue ? SEX_MAP[sexValue] ?? null : null;
 
         // Default usage to "other" when column is absent or value unrecognized
         const usage: AnimalUsage = usageValue ? (USAGE_MAP[usageValue] ?? "other") : "other";
 
         let dateOfBirth: Date | null = null;
-        if (!dobCell.value) {
-          parseErrors.push(t("animal_import.error_dob_required"));
-        } else if (dobCell.value instanceof Date) {
-          dateOfBirth = dobCell.value;
-        } else if (typeof dobCell.value === "string") {
-          const parsed = parseDateString(dobCell.value);
-          if (!parsed) {
-            parseErrors.push(t("animal_import.error_dob_invalid"));
-          } else {
-            dateOfBirth = parsed;
+        if (dobCell.value) {
+          if (dobCell.value instanceof Date) {
+            dateOfBirth = dobCell.value;
+          } else if (typeof dobCell.value === "string") {
+            dateOfBirth = parseDateString(dobCell.value);
+          } else if (typeof dobCell.value === "number") {
+            dateOfBirth = new Date(Math.round((dobCell.value - 25569) * 86400 * 1000));
           }
-        } else if (typeof dobCell.value === "number") {
-          dateOfBirth = new Date(Math.round((dobCell.value - 25569) * 86400 * 1000));
-        } else {
-          parseErrors.push(t("animal_import.error_dob_invalid"));
         }
+        const prerequisites = validateImportAnimalPrerequisites({
+          name: resolvedName, sexValue, sex, dateOfBirth, birthDatePresent: !!dobCell.value,
+        });
+        const parseErrors = prerequisites.map((issue) => t(issue.key, { ...issue.params, returnObjects: false }));
+        // Keep invalid parsed dates serializable in preview, like malformed date strings.
+        if (prerequisites.some((issue) => issue.key === "animal_import.error_dob_invalid")) dateOfBirth = null;
 
         // Parse optional date of death — same logic as dateOfBirth but no error if absent
         let dateOfDeath: Date | null = null;
@@ -1548,7 +1578,7 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
           dateOfBirth,
           usage,
           dateOfDeath,
-          deathReason: dateOfDeath ? "died" : null,
+          deathReason: dateOfDeath ? "unknown" : null,
           motherEarTagNumber,
           fatherEarTagNumber,
           parseErrors,
@@ -1561,168 +1591,177 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
     // Commit a (possibly user-modified) set of parsed rows to the DB. Each row either creates
     // a new animal or merges into an existing one (overwriting only the imported fields).
     async commitImport(rows: CommitImportRow[], type: AnimalType, farmId: string): Promise<CommitImportResult> {
-      // Fetch all farm ear tags once — used for both create and merge paths
-      const existingEarTags = await rlsDb.rls(async (tx) => {
-        return tx.query.earTags.findMany({
-          where: { farmId },
-          with: { animal: true },
-        });
-      });
-      // Mutable map keyed by lowercase number so we can add newly created tags
-      const earTagByNumber = new Map(
-        existingEarTags.map((tag) => [tag.number.toLowerCase(), tag as (typeof existingEarTags)[0]])
-      );
-
+      // Resolve and validate the complete intended import before writing animal or parent changes.
+      const { existingEarTags, existingAnimals } = await rlsDb.rls(async (tx) => ({
+        existingEarTags: await tx.query.earTags.findMany({ where: { farmId }, with: { animal: true } }),
+        existingAnimals: await tx.query.animals.findMany({ where: { farmId } }),
+      }));
+      const earTagByNumber = new Map(existingEarTags.map((tag) => [tag.number.toLowerCase(), tag]));
+      const previousAnimals = new Map<string, AnimalValidationState>(existingAnimals.map((animal) => [animal.id, animal]));
       const skipped: CommitImportResult["skipped"] = [];
-
-      // --- Create path (rows without mergeAnimalId) ---
-      const createRows = rows.flatMap((r, i) => (!r.mergeAnimalId ? [{ row: r, index: i }] : []));
-
-      // Determine which ear tag numbers need to be created
-      const earTagsToCreate = new Set<string>();
-      const validCreateRows: Array<{ row: CommitImportRow; index: number }> = [];
-      for (const { row, index } of createRows) {
+      type ImportPlan = {
+        row: CommitImportRow;
+        index: number;
+        id: string;
+        parentPatch: { motherId?: string; fatherId?: string };
+        previous?: AnimalValidationState;
+        state: AnimalValidationState;
+        deathFields: Partial<AnimalLifecycleFields>;
+      };
+      let plans: ImportPlan[] = [];
+      for (const [index, row] of rows.entries()) {
+        if (row.mergeAnimalId && !previousAnimals.has(row.mergeAnimalId)) {
+          skipped.push({ index, reason: t("animal_import.error_merge_animal_not_found") });
+          continue;
+        }
         if (row.earTagNumber && !row.earTagId) {
           const existing = earTagByNumber.get(row.earTagNumber.toLowerCase());
-          if (existing?.animal) {
+          if (hasAssignedEarTagConflict(existing?.animal?.id, row.mergeAnimalId)) {
             skipped.push({ index, reason: t("animal_import.error_ear_tag_assigned", { number: row.earTagNumber }) });
             continue;
           }
-          if (!existing) earTagsToCreate.add(row.earTagNumber);
         }
-        validCreateRows.push({ row, index });
+        const id = row.mergeAnimalId ?? randomUUID();
+        plans.push({ row, index, id, parentPatch: {}, state: { id, type, ...row }, deathFields: {} });
       }
 
-      // Batch create missing ear tags and populate the map
-      if (earTagsToCreate.size > 0) {
-        const newEarTags = await rlsDb.rls(async (tx) => {
-          return tx
-            .insert(tables.earTags)
-            .values(Array.from(earTagsToCreate).map((number) => ({ ...tables.farmIdColumnValue, number })))
-            .returning();
-        });
-        for (const tag of newEarTags) {
-          earTagByNumber.set(tag.number.toLowerCase(), { ...tag, animal: null });
-        }
-      }
-
-      // Maps earTagNumber (lowercase) → newly created/merged animalId for parent resolution
-      const importedEarTagToAnimalId = new Map<string, string>();
-
-      let created = 0;
-      if (validCreateRows.length > 0) {
-        const animalsToInsert = validCreateRows.map(({ row }) => {
-          // Prefer explicit earTagId from frontend, then look up by number
-          const resolvedEarTagId = row.earTagId ?? earTagByNumber.get(row.earTagNumber?.toLowerCase() ?? "")?.id;
-          return {
-            ...tables.farmIdColumnValue,
-            name: row.name,
-            type,
+      const projectAnimals = () => {
+        const projected = new Map(previousAnimals);
+        const importedIds = new Map<string, string>();
+        for (const plan of plans) {
+          const { row, id } = plan;
+          const previous = projected.get(id);
+          plan.previous = previous;
+          // Import null dates still mean no overwrite; reason-only payloads now use the retained date.
+          plan.deathFields = resolveAnimalDeathFields({
+            ...(row.dateOfDeath ? { dateOfDeath: row.dateOfDeath } : {}),
+            ...(row.deathReason !== undefined ? { deathReason: row.deathReason } : {}),
+          }, previous);
+          plan.state = {
+            ...previous,
+            id,
+            type: previous?.type ?? type,
             sex: row.sex,
-            dateOfBirth: row.dateOfBirth,
             usage: row.usage,
-            earTagId: resolvedEarTagId,
-            registered: true,
-            ...(row.dateOfDeath ? { dateOfDeath: row.dateOfDeath, deathReason: row.deathReason ?? "died" } : {}),
+            dateOfBirth: row.dateOfBirth,
+            ...plan.deathFields,
           };
+          projected.set(id, plan.state);
+          if (row.earTagNumber) importedIds.set(row.earTagNumber.toLowerCase(), id);
+        }
+        const resolveParentId = (number: string | null | undefined) => {
+          if (!number) return undefined;
+          const key = number.toLowerCase();
+          return earTagByNumber.get(key)?.animal?.id ?? importedIds.get(key);
+        };
+        const inheritedParents = new Map<string, { motherId?: string | null; fatherId?: string | null }>();
+        for (const plan of plans) {
+          const motherId = resolveParentId(plan.row.motherEarTagNumber);
+          const fatherId = resolveParentId(plan.row.fatherEarTagNumber);
+          // An unresolved tag remains ignored, preserving the established import contract.
+          plan.parentPatch = { ...(motherId ? { motherId } : {}), ...(fatherId ? { fatherId } : {}) };
+          const priorParents = inheritedParents.get(plan.id);
+          plan.state = { ...plan.state, ...priorParents, ...plan.parentPatch };
+          if (plan.previous && priorParents) plan.previous = { ...plan.previous, ...priorParents };
+          inheritedParents.set(plan.id, { motherId: plan.state.motherId, fatherId: plan.state.fatherId });
+          projected.set(plan.id, { ...projected.get(plan.id)!, ...plan.parentPatch });
+        }
+        return projected;
+      };
+
+      // Rejected rows leave the projection. Recheck dependants against retained stored parents.
+      // Each pass removes at least one row, so this is bounded by the input row count.
+      const today = todayUtcDay();
+      for (let pass = 0; pass <= rows.length; pass++) {
+        const projected = projectAnimals();
+        const lastPlanById = new Map(plans.map((plan) => [plan.id, plan]));
+        const failures = plans.flatMap((plan) => {
+          const issues = validateAnimalConsistency(plan.state, plan.previous, projected, previousAnimals, today);
+          const finalIssues = lastPlanById.get(plan.id) === plan ? validateAnimalConsistency(
+            projected.get(plan.id)!, previousAnimals.get(plan.id), projected, previousAnimals, today
+          ) : [];
+          return issues.length || finalIssues.length ? [{ plan, issues: [...issues, ...finalIssues] }] : [];
         });
-
-        const result = await rlsDb.rls(async (tx) => {
-          return tx.insert(tables.animals).values(animalsToInsert).returning({ id: tables.animals.id });
-        });
-        created = result.length;
-
-        // Map earTagNumber → created animalId for parent resolution below
-        result.forEach(({ id }, i) => {
-          const earTagNumber = validCreateRows[i].row.earTagNumber;
-          if (earTagNumber) importedEarTagToAnimalId.set(earTagNumber.toLowerCase(), id);
-        });
-      }
-
-      // --- Merge path (rows with mergeAnimalId) ---
-      const mergeRows = rows.flatMap((r, i) => (r.mergeAnimalId ? [{ row: r, index: i }] : []));
-      let merged = 0;
-
-      for (const { row, index } of mergeRows) {
-        const animalId = row.mergeAnimalId!;
-
-        // Resolve the ear tag to assign (if any)
-        let resolvedEarTagId: string | undefined;
-        if (row.earTagId) {
-          resolvedEarTagId = row.earTagId;
-        } else if (row.earTagNumber) {
-          const existing = earTagByNumber.get(row.earTagNumber.toLowerCase());
-          if (existing) {
-            if (existing.animal && existing.animal.id !== animalId) {
-              skipped.push({ index, reason: t("animal_import.error_ear_tag_assigned", { number: row.earTagNumber }) });
-              continue;
-            }
-            resolvedEarTagId = existing.id;
-          } else {
-            // Create the ear tag on the fly
-            const [newTag] = await rlsDb.rls(async (tx) => {
-              return tx
-                .insert(tables.earTags)
-                .values({ ...tables.farmIdColumnValue, number: row.earTagNumber! })
-                .returning();
-            });
-            resolvedEarTagId = newTag.id;
-            earTagByNumber.set(row.earTagNumber.toLowerCase(), { ...newTag, animal: null });
+        if (failures.length === 0) break;
+        // Reject intrinsic causes before examining dependent parent relations. Otherwise a bad
+        // parent row could make a valid child fail against changes which will never be written.
+        const intrinsic = failures.filter(({ issues }) => issues.some(({ key }) =>
+          !["animal_validation.parent_sex", "animal_validation.parent_species", "animal_validation.parent_birth"].includes(key)
+        ));
+        const failingIds = new Set(failures.map(({ plan }) => plan.id));
+        const roots = failures.filter(({ plan }) =>
+          ![plan.state.motherId, plan.state.fatherId].some((id) => id && id !== plan.id && failingIds.has(id))
+        );
+        // A failing dependency cycle cannot satisfy strictly earlier parent births.
+        const toReject = intrinsic.length ? intrinsic : roots.length ? roots : failures;
+        const rejected = new Set(toReject.map(({ plan }) => plan.index));
+        for (const { plan } of toReject) {
+          try {
+            assertAnimalConsistency(plan.state, plan.previous, projected, t, previousAnimals, today);
+            assertAnimalConsistency(projected.get(plan.id)!, previousAnimals.get(plan.id), projected, t, previousAnimals, today);
+          } catch (error) {
+            if (!createHttpError.isHttpError(error) || error.status !== 400) throw error;
+            skipped.push({ index: plan.index, reason: error.message });
           }
         }
+        plans = plans.filter((plan) => !rejected.has(plan.index));
+      }
 
-        await rlsDb.rls(async (tx) => {
-          await tx
-            .update(tables.animals)
-            .set({
-              name: row.name,
-              sex: row.sex,
-              dateOfBirth: row.dateOfBirth,
-              usage: row.usage,
-              ...(resolvedEarTagId !== undefined ? { earTagId: resolvedEarTagId } : {}),
-              ...(row.dateOfDeath ? { dateOfDeath: row.dateOfDeath, deathReason: row.deathReason ?? "died" } : {}),
-            })
-            .where(eq(tables.animals.id, animalId));
-        });
+      const createPlans = plans.filter(({ row }) => !row.mergeAnimalId);
+      const earTagsToCreate = new Set<string>();
+      for (const { row } of createPlans) {
+        if (row.earTagNumber && !row.earTagId && !earTagByNumber.has(row.earTagNumber.toLowerCase())) {
+          earTagsToCreate.add(row.earTagNumber);
+        }
+      }
+      if (earTagsToCreate.size > 0) {
+        const newEarTags = await rlsDb.rls(async (tx) => tx.insert(tables.earTags)
+          .values([...earTagsToCreate].map((number) => ({ ...tables.farmIdColumnValue, number }))).returning());
+        for (const tag of newEarTags) earTagByNumber.set(tag.number.toLowerCase(), { ...tag, animal: null });
+      }
 
-        // Track for parent resolution
-        if (row.earTagNumber) importedEarTagToAnimalId.set(row.earTagNumber.toLowerCase(), animalId);
+      let created = 0;
+      if (createPlans.length > 0) {
+        const result = await rlsDb.rls(async (tx) => tx.insert(tables.animals).values(createPlans.map(({ row, id, deathFields }) => ({
+          ...tables.farmIdColumnValue,
+          id,
+          name: row.name,
+          type,
+          sex: row.sex,
+          dateOfBirth: row.dateOfBirth,
+          usage: row.usage,
+          earTagId: row.earTagId ?? earTagByNumber.get(row.earTagNumber?.toLowerCase() ?? "")?.id,
+          registered: true,
+          ...deathFields,
+        }))).returning({ id: tables.animals.id }));
+        created = result.length;
+      }
 
+      let merged = 0;
+      for (const { row, id, deathFields } of plans.filter(({ row }) => row.mergeAnimalId)) {
+        let earTagId = row.earTagId ?? earTagByNumber.get(row.earTagNumber?.toLowerCase() ?? "")?.id;
+        if (!earTagId && row.earTagNumber) {
+          const [tag] = await rlsDb.rls(async (tx) => tx.insert(tables.earTags)
+            .values({ ...tables.farmIdColumnValue, number: row.earTagNumber! }).returning());
+          earTagByNumber.set(row.earTagNumber.toLowerCase(), { ...tag, animal: null });
+          earTagId = tag.id;
+        }
+        await rlsDb.rls(async (tx) => tx.update(tables.animals).set({
+          name: row.name,
+          sex: row.sex,
+          dateOfBirth: row.dateOfBirth,
+          usage: row.usage,
+          ...(earTagId !== undefined ? { earTagId } : {}),
+          ...deathFields,
+        }).where(eq(tables.animals.id, id)));
         merged++;
       }
 
-      // --- Parent resolution (mother/father) ---
-      // Resolve an ear tag number to an animal ID: check existing DB animals first, then this import batch
-      const resolveParentId = (earTagNumber: string): string | undefined => {
-        const tag = earTagByNumber.get(earTagNumber.toLowerCase());
-        if (tag?.animal?.id) return tag.animal.id;
-        return importedEarTagToAnimalId.get(earTagNumber.toLowerCase());
-      };
-
-      for (const row of rows) {
-        if (!row.motherEarTagNumber && !row.fatherEarTagNumber) continue;
-
-        // Determine this row's animalId (created or merged)
-        const animalId =
-          row.mergeAnimalId ??
-          (row.earTagNumber ? importedEarTagToAnimalId.get(row.earTagNumber.toLowerCase()) : undefined);
-        if (!animalId) continue;
-
-        const motherId = row.motherEarTagNumber ? resolveParentId(row.motherEarTagNumber) : undefined;
-        const fatherId = row.fatherEarTagNumber ? resolveParentId(row.fatherEarTagNumber) : undefined;
-        if (!motherId && !fatherId) continue;
-
-        await rlsDb.rls(async (tx) => {
-          await tx
-            .update(tables.animals)
-            .set({
-              ...(motherId ? { motherId } : {}),
-              ...(fatherId ? { fatherId } : {}),
-            })
-            .where(eq(tables.animals.id, animalId));
-        });
+      // Only accepted rows can participate in the delayed parent phase.
+      for (const { id, parentPatch } of plans) {
+        if (Object.keys(parentPatch).length === 0) continue;
+        await rlsDb.rls(async (tx) => tx.update(tables.animals).set(parentPatch).where(eq(tables.animals.id, id)));
       }
-
       return { created, merged, skipped };
     },
   };

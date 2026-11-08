@@ -1937,7 +1937,7 @@ describe("Animal import — preview + commit", () => {
 describe("Animal import — dateOfDeath and parent resolution", () => {
   beforeEach(cleanDb);
 
-  it("commit sets dateOfDeath and deathReason=died on create", async () => {
+  it("commit sets dateOfDeath and deathReason=unknown on create", async () => {
     const { jwt } = await createUserWithFarm();
     const res = await request(
       "POST",
@@ -1953,10 +1953,10 @@ describe("Animal import — dateOfDeath and parent resolution", () => {
     const db = getAdminDb();
     const animal = await db.query.animals.findFirst({ where: { name: "Dead" } });
     expect(animal!.dateOfDeath).toEqual(new Date("2023-06-15"));
-    expect(animal!.deathReason).toBe("died");
+    expect(animal!.deathReason).toBe("unknown");
   });
 
-  it("commit sets dateOfDeath and deathReason=died on merge", async () => {
+  it("commit sets dateOfDeath and deathReason=unknown on merge", async () => {
     const { jwt } = await createUserWithFarm();
     const existing = await createAnimal(jwt, { name: "Alive", dateOfBirth: "2019-01-01" });
 
@@ -1983,7 +1983,7 @@ describe("Animal import — dateOfDeath and parent resolution", () => {
     const db = getAdminDb();
     const updated = await db.query.animals.findFirst({ where: { id: existing.id } });
     expect(updated!.dateOfDeath).toEqual(new Date("2024-02-20"));
-    expect(updated!.deathReason).toBe("died");
+    expect(updated!.deathReason).toBe("unknown");
   });
 
   it("commit resolves mother from existing DB animal by ear tag", async () => {

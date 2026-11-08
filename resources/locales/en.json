@@ -1,5 +1,17 @@
 {
+  "animal_validation": {
+    "usage_species": "Usage milk is not allowed for species {{species}}.",
+    "birth_future": "dateOfBirth must not be in the future.",
+    "death_before_birth": "dateOfDeath must be on or after dateOfBirth.",
+    "death_reason_date": "deathReason requires dateOfDeath.",
+    "parent_missing": "{{field}} must reference an accessible animal in this farm.",
+    "parent_self": "{{field}} must not reference the animal itself.",
+    "parent_sex": "{{field}} must reference a {{sex}} animal.",
+    "parent_species": "{{field}} must reference an animal of the same species.",
+    "parent_birth": "{{field}} must reference an animal born before the offspring."
+  },
   "animal_import": {
+    "error_merge_animal_not_found": "Animal selected for merge was not found.",
     "error_name_required": "Name is required",
     "error_sex_required": "Sex is required",
     "error_sex_unknown": "Unknown sex value: {{value}}",
