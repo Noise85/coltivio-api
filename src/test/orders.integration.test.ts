@@ -42,6 +42,25 @@ describe("Orders", () => {
     expect(order.status).toBe("confirmed");
   });
 
+  it("rejects adding an item to an order from another farm", async () => {
+    const { jwt } = await createUserWithFarm({}, `orders-local-${Date.now()}@test.ch`);
+    const { jwt: foreignJwt } = await createUserWithFarm({}, `orders-foreign-${Date.now()}@test.ch`);
+    const localProduct = await createProduct(jwt);
+    const foreignContact = await createContact(foreignJwt);
+    const foreignProduct = await createProduct(foreignJwt);
+    const foreignOrder = await createOrder(foreignJwt, foreignContact.id, [
+      { productId: foreignProduct.id, quantity: 1 },
+    ]);
+
+    const res = await request(
+      "POST",
+      `/v1/orders/byId/${foreignOrder.id}/items`,
+      { productId: localProduct.id, quantity: 1 },
+      jwt
+    );
+    expect(res.status).toBe(400);
+  });
+
   describe("GET /v1/orders — paidInFull flag", () => {
     it("returns paidInFull=false when no payments exist", async () => {
       const { jwt } = await createUserWithFarm({}, undefined);

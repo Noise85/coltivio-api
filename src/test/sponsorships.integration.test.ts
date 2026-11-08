@@ -33,6 +33,41 @@ describe("Sponsorships", () => {
     expect(Array.isArray(fetched.payments)).toBe(true);
   });
 
+  it("rejects foreign contact, animal, and program IDs on create and update", async () => {
+    const { jwt } = await createUserWithFarm({}, `sponsorship-local-${Date.now()}@test.ch`);
+    const { jwt: foreignJwt } = await createUserWithFarm({}, `sponsorship-foreign-${Date.now()}@test.ch`);
+    const localContact = await createContact(jwt);
+    const localAnimal = await createAnimal(jwt);
+    const localProgram = await createSponsorshipProgram(jwt);
+    const foreignContact = await createContact(foreignJwt);
+    const foreignAnimal = await createAnimal(foreignJwt);
+    const foreignProgram = await createSponsorshipProgram(foreignJwt);
+
+    const createRes = await request(
+      "POST",
+      "/v1/sponsorships",
+      {
+        contactId: localContact.id,
+        animalId: foreignAnimal.id,
+        sponsorshipProgramId: localProgram.id,
+        startDate: "2026-01-01",
+      },
+      jwt
+    );
+    expect(createRes.status).toBe(400);
+
+    const sponsorship = await createSponsorship(jwt, localContact.id, localAnimal.id, localProgram.id);
+    const updateCases = [
+      { contactId: foreignContact.id },
+      { animalId: foreignAnimal.id },
+      { sponsorshipProgramId: foreignProgram.id },
+    ];
+    for (const data of updateCases) {
+      const updateRes = await request("PATCH", `/v1/sponsorships/byId/${sponsorship.id}`, data, jwt);
+      expect(updateRes.status).toBe(400);
+    }
+  });
+
   describe("GET /v1/sponsorships — paidThisYear flag", () => {
     it("returns paidThisYear=false when no payments exist", async () => {
       const { jwt } = await createUserWithFarm({}, undefined);

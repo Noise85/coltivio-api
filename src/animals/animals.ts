@@ -344,6 +344,13 @@ async function changeHerdMemberships(
   const uniqueAnimalIds = [...new Set(animalIds)];
   if (uniqueAnimalIds.length === 0) return;
 
+  const visibleAnimals = await tx.query.animals.findMany({
+    where: { id: { in: uniqueAnimalIds } },
+  });
+  if (visibleAnimals.length !== uniqueAnimalIds.length) {
+    throw createHttpError(400, "One or more animals not found in this farm");
+  }
+
   const { activeMembershipByAnimalId, earliestHerdChangeDateByAnimalId } = await loadHerdMembershipLimits(
     tx,
     uniqueAnimalIds

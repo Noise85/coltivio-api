@@ -338,6 +338,30 @@ describe("Herds CRUD", () => {
     expect(dbA2!.herdId).toBe(herd.id);
   });
 
+  it("rejects foreign animal IDs when creating or updating a herd", async () => {
+    const { jwt } = await createUserWithFarm({}, `herd-local-${Date.now()}@test.ch`);
+    const { jwt: foreignJwt } = await createUserWithFarm({}, `herd-foreign-${Date.now()}@test.ch`);
+    const localAnimal = await createAnimal(jwt, { name: "Local" });
+    const foreignAnimal = await createAnimal(foreignJwt, { name: "Foreign" });
+
+    const createRes = await request(
+      "POST",
+      "/v1/animals/herds",
+      { name: "Cross-farm herd", animalIds: [localAnimal.id, foreignAnimal.id] },
+      jwt
+    );
+    expect(createRes.status).toBe(400);
+
+    const herd = await createHerd(jwt, { name: "Local herd", animalIds: [localAnimal.id] });
+    const updateRes = await request(
+      "PATCH",
+      `/v1/animals/herds/byId/${herd.id}`,
+      { animalIds: [localAnimal.id, foreignAnimal.id] },
+      jwt
+    );
+    expect(updateRes.status).toBe(400);
+  });
+
   it("deletes a herd", async () => {
     const { jwt } = await createUserWithFarm();
     const herd = await createHerd(jwt, { name: "ToDelete" });

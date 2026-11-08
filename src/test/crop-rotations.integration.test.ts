@@ -111,6 +111,64 @@ describe("Crop Rotations CRUD", () => {
     expect(dbRotations).toHaveLength(2);
   });
 
+  it("rejects foreign plots and crops across crop rotation write paths", async () => {
+    const { jwt } = await createUserWithFarm({}, `rotation-local-${Date.now()}@test.ch`);
+    const { jwt: foreignJwt } = await createUserWithFarm({}, `rotation-foreign-${Date.now()}@test.ch`);
+    const localPlot = await createPlot(jwt, { name: "Local plot" });
+    const localCrop = await createCrop(jwt, { name: "Local crop" });
+    const foreignPlot = await createPlot(foreignJwt, { name: "Foreign plot" });
+    const foreignCrop = await createCrop(foreignJwt, { name: "Foreign crop" });
+
+    const createRes = await request(
+      "POST",
+      "/v1/cropRotations",
+      { plotId: localPlot.id, cropId: foreignCrop.id, fromDate: "2025-01-01", toDate: "2025-06-30" },
+      jwt
+    );
+    expect(createRes.status).toBe(400);
+
+    const rotation = await createCropRotation(jwt, localPlot.id, localCrop.id);
+    const updateRes = await request("PATCH", `/v1/cropRotations/byId/${rotation.id}`, { cropId: foreignCrop.id }, jwt);
+    expect(updateRes.status).toBe(400);
+
+    const byPlotRes = await request(
+      "POST",
+      "/v1/cropRotations/batch/byPlot",
+      {
+        plotId: localPlot.id,
+        crops: [{ cropId: foreignCrop.id, fromDate: "2025-01-01", toDate: "2025-06-30" }],
+      },
+      jwt
+    );
+    expect(byPlotRes.status).toBe(400);
+
+    const byCropRes = await request(
+      "POST",
+      "/v1/cropRotations/batch/byCrop",
+      {
+        cropId: localCrop.id,
+        plots: [{ plotId: foreignPlot.id, fromDate: "2025-01-01", toDate: "2025-06-30" }],
+      },
+      jwt
+    );
+    expect(byCropRes.status).toBe(400);
+
+    const planRes = await request(
+      "PATCH",
+      "/v1/cropRotations/plan",
+      {
+        plots: [
+          {
+            plotId: foreignPlot.id,
+            rotations: [{ cropId: localCrop.id, fromDate: "2025-01-01", toDate: "2025-06-30" }],
+          },
+        ],
+      },
+      jwt
+    );
+    expect(planRes.status).toBe(400);
+  });
+
   it("updates a crop rotation", async () => {
     const { jwt } = await createUserWithFarm();
     const plot = await createPlot(jwt);

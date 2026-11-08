@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import createHttpError from "http-errors";
 import { RlsDb } from "../db/db";
 import { orders, orderItems, farmIdColumnValue } from "../db/schema";
 import { Contact } from "../contacts/contacts";
@@ -180,6 +181,11 @@ export function ordersApi(rlsDb: RlsDb) {
 
     async addOrderItem(orderId: string, item: OrderItemInput): Promise<OrderItemWithProduct> {
       return rlsDb.rls(async (tx) => {
+        const order = await tx.query.orders.findFirst({ where: { id: orderId } });
+        if (!order) {
+          throw createHttpError(400, "Order not found in this farm");
+        }
+
         const product = await tx.query.products.findFirst({
           where: { id: item.productId },
         });

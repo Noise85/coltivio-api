@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
-import { RlsDb } from "../db/db";
+import createHttpError from "http-errors";
+import { RlsDb, Transaction } from "../db/db";
 import { sponsorships, payments, farmIdColumnValue } from "../db/schema";
 import { Animal } from "../animals/animals";
 import { Contact } from "../contacts/contacts";
@@ -17,10 +18,35 @@ export type SponsorshipWithRelations = Sponsorship & {
   payments: Payment[];
 };
 
+async function validateSponsorshipReferences(
+  tx: Transaction,
+  references: Partial<Pick<SponsorshipCreateInput, "contactId" | "animalId" | "sponsorshipProgramId">>
+) {
+  const [contact, animal, program] = await Promise.all([
+    references.contactId === undefined
+      ? undefined
+      : tx.query.contacts.findFirst({ where: { id: references.contactId } }),
+    references.animalId === undefined ? undefined : tx.query.animals.findFirst({ where: { id: references.animalId } }),
+    references.sponsorshipProgramId === undefined
+      ? undefined
+      : tx.query.sponsorshipPrograms.findFirst({ where: { id: references.sponsorshipProgramId } }),
+  ]);
+
+  if (
+    (references.contactId !== undefined && !contact) ||
+    (references.animalId !== undefined && !animal) ||
+    (references.sponsorshipProgramId !== undefined && !program)
+  ) {
+    throw createHttpError(400, "Referenced item not found in this farm");
+  }
+}
+
 export function sponsorshipsApi(rlsDb: RlsDb) {
   return {
     async createSponsorship(sponsorshipInput: SponsorshipCreateInput): Promise<Sponsorship> {
       return rlsDb.rls(async (tx) => {
+        await validateSponsorshipReferences(tx, sponsorshipInput);
+
         const [sponsorship] = await tx
           .insert(sponsorships)
           .values({ ...farmIdColumnValue, ...sponsorshipInput })
@@ -124,6 +150,8 @@ export function sponsorshipsApi(rlsDb: RlsDb) {
 
     async updateSponsorship(id: string, data: SponsorshipUpdateInput): Promise<Sponsorship> {
       return rlsDb.rls(async (tx) => {
+        await validateSponsorshipReferences(tx, data);
+
         const [sponsorship] = await tx.update(sponsorships).set(data).where(eq(sponsorships.id, id)).returning();
         return sponsorship;
       });

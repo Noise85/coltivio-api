@@ -1,6 +1,7 @@
 import { and, arrayContains, eq, inArray } from "drizzle-orm";
+import createHttpError from "http-errors";
 import { TFunction } from "i18next";
-import { RlsDb } from "../db/db";
+import { RlsDb, Transaction } from "../db/db";
 import { farmIdColumnValue, taskChecklistItems, taskLinks, taskRecurrences, tasks } from "../db/schema";
 
 export type Task = typeof tasks.$inferSelect;
@@ -86,6 +87,47 @@ export type TaskListFilters = {
   assigneeId?: string;
   label?: string;
 };
+
+async function validateTaskLinks(tx: Transaction, links: TaskLinkInput[]) {
+  const idsByType = new Map<TaskLinkInput["linkType"], Set<string>>();
+  for (const { linkType, linkedId } of links) {
+    const ids = idsByType.get(linkType) ?? new Set<string>();
+    ids.add(linkedId);
+    idsByType.set(linkType, ids);
+  }
+
+  const missingTargets = await Promise.all(
+    [...idsByType].map(async ([linkType, ids]) => {
+      const targetIds = [...ids];
+      switch (linkType) {
+        case "animal":
+          return (await tx.query.animals.findMany({ where: { id: { in: targetIds } } })).length !== targetIds.length;
+        case "plot":
+          return (await tx.query.plots.findMany({ where: { id: { in: targetIds } } })).length !== targetIds.length;
+        case "contact":
+          return (await tx.query.contacts.findMany({ where: { id: { in: targetIds } } })).length !== targetIds.length;
+        case "order":
+          return (await tx.query.orders.findMany({ where: { id: { in: targetIds } } })).length !== targetIds.length;
+        case "wiki_entry":
+          return (
+            (await tx.query.wikiEntries.findMany({ where: { id: { in: targetIds } } })).length !== targetIds.length
+          );
+        case "treatment":
+          return (await tx.query.treatments.findMany({ where: { id: { in: targetIds } } })).length !== targetIds.length;
+        case "herd":
+          return (await tx.query.herds.findMany({ where: { id: { in: targetIds } } })).length !== targetIds.length;
+        case "parasite_check":
+          return (
+            (await tx.query.parasiteChecks.findMany({ where: { id: { in: targetIds } } })).length !== targetIds.length
+          );
+      }
+    })
+  );
+
+  if (missingTargets.some(Boolean)) {
+    throw createHttpError(400, "Linked item not found in this farm");
+  }
+}
 
 // Resolve a display name for each link by querying the target table
 async function resolveLinks(
@@ -319,6 +361,8 @@ export function tasksApi(rlsDb: RlsDb, t: TFunction, locale: string) {
 
     async createTask(input: TaskCreateInput, createdBy: string): Promise<TaskWithRelations> {
       return rlsDb.rls(async (tx) => {
+        await validateTaskLinks(tx, input.links ?? []);
+
         const [task] = await tx
           .insert(tasks)
           .values({
@@ -382,6 +426,10 @@ export function tasksApi(rlsDb: RlsDb, t: TFunction, locale: string) {
 
     async updateTask(id: string, input: TaskUpdateInput): Promise<TaskWithRelations> {
       return rlsDb.rls(async (tx) => {
+        if (input.links !== undefined) {
+          await validateTaskLinks(tx, input.links);
+        }
+
         const updateFields: Partial<typeof tasks.$inferInsert> = {};
         if (input.name !== undefined) updateFields.name = input.name;
         if (input.description !== undefined) updateFields.description = input.description;

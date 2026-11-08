@@ -76,6 +76,41 @@ describe("Treatments CRUD", () => {
     expect(getBody.data.animals).toHaveLength(2);
   });
 
+  it("rejects foreign animal IDs on create and update, including when not first", async () => {
+    const { jwt } = await createUserWithFarm({}, `treatments-local-${Date.now()}@test.ch`);
+    const { jwt: foreignJwt } = await createUserWithFarm({}, `treatments-foreign-${Date.now()}@test.ch`);
+    const localAnimal = await createAnimal(jwt, { name: "Local" });
+    const foreignAnimal = await createAnimal(foreignJwt, { name: "Foreign" });
+
+    const createRes = await request(
+      "POST",
+      "/v1/treatments",
+      {
+        name: "Cross-farm treatment",
+        startDate: "2025-02-01",
+        endDate: "2025-02-03",
+        criticalAntibiotic: false,
+        antibiogramAvailable: false,
+        animalIds: [localAnimal.id, foreignAnimal.id],
+      },
+      jwt
+    );
+    expect(createRes.status).toBe(400);
+
+    const treatment = await createTreatment(jwt, [localAnimal.id], { name: "Local treatment" });
+    const updateRes = await request(
+      "PATCH",
+      `/v1/treatments/byId/${treatment.id}`,
+      { animalIds: [localAnimal.id, foreignAnimal.id] },
+      jwt
+    );
+    expect(updateRes.status).toBe(400);
+
+    const getRes = await request("GET", `/v1/treatments/byId/${treatment.id}`, undefined, jwt);
+    const body = (await getRes.json()) as { data: { animals: Array<{ id: string }> } };
+    expect(body.data.animals.map((animal) => animal.id)).toEqual([localAnimal.id]);
+  });
+
   it("creates treatment with drug reference and marks drug in use", async () => {
     const { jwt } = await createUserWithFarm();
     const animal = await createAnimal(jwt);

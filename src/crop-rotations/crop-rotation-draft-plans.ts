@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
+import createHttpError from "http-errors";
 import { Crop } from "../crops/crops";
-import { RlsDb } from "../db/db";
+import { RlsDb, Transaction } from "../db/db";
 import {
   cropRotationDraftPlanEntries,
   cropRotationDraftPlanPlots,
@@ -37,6 +38,19 @@ type PlotInput = {
   rotations: RotationInput[];
 };
 
+async function validateDraftPlanReferences(tx: Transaction, plots: PlotInput[]) {
+  const plotIds = [...new Set(plots.map((plot) => plot.plotId))];
+  const cropIds = [...new Set(plots.flatMap((plot) => plot.rotations.map((rotation) => rotation.cropId)))];
+  const [visiblePlots, visibleCrops] = await Promise.all([
+    plotIds.length ? tx.query.plots.findMany({ where: { id: { in: plotIds } } }) : [],
+    cropIds.length ? tx.query.crops.findMany({ where: { id: { in: cropIds } } }) : [],
+  ]);
+
+  if (visiblePlots.length !== plotIds.length || visibleCrops.length !== cropIds.length) {
+    throw createHttpError(400, "Referenced plot or crop not found in this farm");
+  }
+}
+
 function mapEntryToRotation(entry: DraftPlanEntry): CropRotationWithRecurrenceResult {
   return {
     id: entry.id,
@@ -62,6 +76,8 @@ export function cropRotationDraftPlansApi(rlsDb: RlsDb) {
   return {
     async createDraftPlan(name: string, plots: PlotInput[]): Promise<DraftPlanWithPlots> {
       return rlsDb.rls(async (tx) => {
+        await validateDraftPlanReferences(tx, plots);
+
         const [plan] = await tx
           .insert(cropRotationDraftPlans)
           .values({ ...farmIdColumnValue, name })
@@ -119,6 +135,10 @@ export function cropRotationDraftPlansApi(rlsDb: RlsDb) {
 
     async updateDraftPlan(id: string, data: { name?: string; plots?: PlotInput[] }): Promise<DraftPlanWithPlots> {
       return rlsDb.rls(async (tx) => {
+        if (data.plots !== undefined) {
+          await validateDraftPlanReferences(tx, data.plots);
+        }
+
         if (data.name !== undefined) {
           await tx.update(cropRotationDraftPlans).set({ name: data.name }).where(eq(cropRotationDraftPlans.id, id));
         }

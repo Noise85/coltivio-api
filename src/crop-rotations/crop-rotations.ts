@@ -1,7 +1,8 @@
 import { addYears, isWithinInterval } from "date-fns";
 import { eq } from "drizzle-orm";
+import createHttpError from "http-errors";
 import { Crop } from "../crops/crops";
-import { RlsDb } from "../db/db";
+import { RlsDb, Transaction } from "../db/db";
 import { cropRotationYearlyRecurrences, cropRotations, farmIdColumnValue } from "../db/schema";
 
 export type CropRotation = typeof cropRotations.$inferSelect & {
@@ -63,6 +64,19 @@ export type CropRotationsPlanInput = {
 export type CropRotationUpdateInput = Partial<CropRotationCreateInput> & {
   recurrence?: CropRotationRecurrenceInput | null;
 };
+
+async function validateCropRotationReferences(tx: Transaction, plotIds: string[], cropIds: string[]) {
+  const uniquePlotIds = [...new Set(plotIds)];
+  const uniqueCropIds = [...new Set(cropIds)];
+  const [visiblePlots, visibleCrops] = await Promise.all([
+    uniquePlotIds.length ? tx.query.plots.findMany({ where: { id: { in: uniquePlotIds } } }) : [],
+    uniqueCropIds.length ? tx.query.crops.findMany({ where: { id: { in: uniqueCropIds } } }) : [],
+  ]);
+
+  if (visiblePlots.length !== uniquePlotIds.length || visibleCrops.length !== uniqueCropIds.length) {
+    throw createHttpError(400, "Referenced plot or crop not found in this farm");
+  }
+}
 
 // Expands a crop rotation with recurrence into multiple entries based on the query date range
 export function expandRecurrence(
@@ -305,6 +319,8 @@ export function cropRotationsApi(rlsDb: RlsDb) {
       const result = await rlsDb.rls(async (tx) => {
         const { recurrence, ...rotationInput } = input;
 
+        await validateCropRotationReferences(tx, [rotationInput.plotId], [rotationInput.cropId]);
+
         const [plotCrop] = await tx
           .insert(cropRotations)
           .values({
@@ -332,6 +348,11 @@ export function cropRotationsApi(rlsDb: RlsDb) {
         if (input.crops.length === 0) {
           return [];
         }
+        await validateCropRotationReferences(
+          tx,
+          [input.plotId],
+          input.crops.map((crop) => crop.cropId)
+        );
 
         // Fetch existing rotations for overlap check
         const existingRotations = await tx.query.cropRotations.findMany({
@@ -402,6 +423,11 @@ export function cropRotationsApi(rlsDb: RlsDb) {
         if (input.plots.length === 0) {
           return [];
         }
+        await validateCropRotationReferences(
+          tx,
+          input.plots.map((plot) => plot.plotId),
+          [input.cropId]
+        );
 
         // Check for overlaps for each plot
         for (const plot of input.plots) {
@@ -473,6 +499,11 @@ export function cropRotationsApi(rlsDb: RlsDb) {
         if (input.plots.length === 0) {
           return [];
         }
+        await validateCropRotationReferences(
+          tx,
+          input.plots.map((plot) => plot.plotId),
+          input.plots.flatMap((plot) => plot.rotations.map((rotation) => rotation.cropId))
+        );
 
         const resultIds: string[] = [];
 
@@ -544,6 +575,12 @@ export function cropRotationsApi(rlsDb: RlsDb) {
         if (!currentRotation) {
           throw new Error("Crop rotation not found");
         }
+
+        await validateCropRotationReferences(
+          tx,
+          rotationData.plotId === undefined ? [] : [rotationData.plotId],
+          rotationData.cropId === undefined ? [] : [rotationData.cropId]
+        );
 
         // Check for overlaps if dates or recurrence are being updated
         if (rotationData.fromDate || rotationData.toDate || recurrence !== undefined) {

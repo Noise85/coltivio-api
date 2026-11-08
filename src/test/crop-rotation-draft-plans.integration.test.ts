@@ -78,6 +78,56 @@ describe("Draft Crop Rotation Plans", () => {
     expect(plan.plots[0].rotations[0].recurrence).toBeNull();
   });
 
+  it("rejects foreign plots and crops when creating or updating a draft plan", async () => {
+    const { jwt } = await createUserWithFarm({}, `draft-local-${Date.now()}@test.ch`, {
+      withActiveMembership: true,
+    });
+    const { jwt: foreignJwt } = await createUserWithFarm({}, `draft-foreign-${Date.now()}@test.ch`, {
+      withActiveMembership: true,
+    });
+    const localPlot = await createPlot(jwt, { name: "Local plot" });
+    const localCrop = await createCrop(jwt, { name: "Local crop" });
+    const foreignPlot = await createPlot(foreignJwt, { name: "Foreign plot" });
+    const foreignCrop = await createCrop(foreignJwt, { name: "Foreign crop" });
+
+    const createRes = await request(
+      "POST",
+      "/v1/cropRotations/draftPlans",
+      {
+        name: "Invalid plan",
+        plots: [
+          {
+            plotId: foreignPlot.id,
+            rotations: [{ cropId: localCrop.id, fromDate: "2026-03-01", toDate: "2026-10-31" }],
+          },
+        ],
+      },
+      jwt
+    );
+    expect(createRes.status).toBe(400);
+
+    const plan = await createDraftPlan(jwt, "Local plan", [
+      {
+        plotId: localPlot.id,
+        rotations: [{ cropId: localCrop.id, fromDate: "2026-03-01", toDate: "2026-10-31" }],
+      },
+    ]);
+    const updateRes = await request(
+      "PATCH",
+      `/v1/cropRotations/draftPlans/byId/${plan.id}`,
+      {
+        plots: [
+          {
+            plotId: localPlot.id,
+            rotations: [{ cropId: foreignCrop.id, fromDate: "2026-03-01", toDate: "2026-10-31" }],
+          },
+        ],
+      },
+      jwt
+    );
+    expect(updateRes.status).toBe(400);
+  });
+
   it("creates a draft plan plot with a rotation with recurrence", async () => {
     const { jwt } = await createUserWithFarm({}, "test@test.com", { withActiveMembership: true });
     const plot = await createPlot(jwt);

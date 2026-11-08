@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { cleanDb, request } from "./helpers";
-import { createUserWithFarm } from "./test-utils";
+import { createAnimal, createUserWithFarm } from "./test-utils";
 
 type ApiChecklistItem = {
   id: string;
@@ -62,6 +62,43 @@ describe("Tasks", () => {
     expect(task.name).toBe("My Task");
     expect(task.status).toBe("todo");
     expect(task.pinned).toBe(false);
+  });
+
+  it("rejects links to animals from another farm on create and update", async () => {
+    const { jwt } = await createUserWithFarm({}, `tasks-local-${Date.now()}@test.ch`, {
+      withActiveMembership: true,
+    });
+    const { jwt: foreignJwt } = await createUserWithFarm({}, `tasks-foreign-${Date.now()}@test.ch`, {
+      withActiveMembership: true,
+    });
+    const localAnimal = await createAnimal(jwt, { name: "Local" });
+    const foreignAnimal = await createAnimal(foreignJwt, { name: "Foreign" });
+
+    const createRes = await request(
+      "POST",
+      "/v1/tasks",
+      { name: "Cross-farm task", links: [{ linkType: "animal", linkedId: foreignAnimal.id }] },
+      jwt
+    );
+    expect(createRes.status).toBe(400);
+
+    const task = await createTask(jwt, {
+      name: "Local task",
+      links: [{ linkType: "animal", linkedId: localAnimal.id }],
+    });
+    const updateRes = await request(
+      "PATCH",
+      `/v1/tasks/byId/${task.id}`,
+      { links: [{ linkType: "animal", linkedId: foreignAnimal.id }] },
+      jwt
+    );
+    expect(updateRes.status).toBe(400);
+
+    const getRes = await request("GET", `/v1/tasks/byId/${task.id}`, undefined, jwt);
+    const getBody = (await getRes.json()) as {
+      data: { links: Array<{ linkedId: string }> };
+    };
+    expect(getBody.data.links.map((link) => link.linkedId)).toEqual([localAnimal.id]);
   });
 
   it("preserves checklist item done state when updating other items", async () => {
