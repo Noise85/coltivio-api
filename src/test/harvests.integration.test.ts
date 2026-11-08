@@ -265,6 +265,59 @@ describe("Harvests CRUD", () => {
     };
     expect(body.data.monthlyHarvests).toBeDefined();
   });
+
+  it("filters farm and plot harvest summaries by optional date range", async () => {
+    const { jwt } = await createUserWithFarm();
+    const plot = await createPlot(jwt);
+    const crop = await createCrop(jwt, { category: "grass" });
+    await createHarvests(jwt, plot.id, crop.id, { date: "2025-01-15" });
+    await createHarvests(jwt, plot.id, crop.id, { date: "2025-02-15" });
+    await createHarvests(jwt, plot.id, crop.id, { date: "2025-03-15" });
+
+    const farmRes = await request(
+      "GET",
+      "/v1/harvests/summaries?fromDate=2025-02-01&toDate=2025-02-28",
+      undefined,
+      jwt
+    );
+    expect(farmRes.status).toBe(200);
+    const farmBody = (await farmRes.json()) as {
+      data: { monthlyHarvests: Array<{ year: number; month: number }> };
+    };
+    expect(farmBody.data.monthlyHarvests.map(({ year, month }) => [year, month])).toEqual([[2025, 1]]);
+
+    const plotRes = await request(
+      "GET",
+      `/v1/plots/byId/${plot.id}/harvestSummary?fromDate=2025-02-01&toDate=2025-02-28`,
+      undefined,
+      jwt
+    );
+    expect(plotRes.status).toBe(200);
+    const plotBody = (await plotRes.json()) as {
+      data: { monthlyHarvests: Array<{ year: number; month: number }> };
+    };
+    expect(plotBody.data.monthlyHarvests.map(({ year, month }) => [year, month])).toEqual([[2025, 1]]);
+
+    const unfilteredRes = await request("GET", "/v1/harvests/summaries", undefined, jwt);
+    const unfilteredBody = (await unfilteredRes.json()) as {
+      data: { monthlyHarvests: Array<{ year: number; month: number }> };
+    };
+    expect(unfilteredBody.data.monthlyHarvests.map(({ year, month }) => [year, month])).toEqual([
+      [2025, 0],
+      [2025, 1],
+      [2025, 2],
+    ]);
+
+    const unfilteredPlotRes = await request("GET", `/v1/plots/byId/${plot.id}/harvestSummary`, undefined, jwt);
+    const unfilteredPlotBody = (await unfilteredPlotRes.json()) as {
+      data: { monthlyHarvests: Array<{ year: number; month: number }> };
+    };
+    expect(unfilteredPlotBody.data.monthlyHarvests.map(({ year, month }) => [year, month])).toEqual([
+      [2025, 0],
+      [2025, 1],
+      [2025, 2],
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------

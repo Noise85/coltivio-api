@@ -144,3 +144,13 @@ supabase/snippets/
 backup_data_*.sql
 backups/
 
+# Local agent and skill configuration
+/.agents/
+/.codex/
+/agents/
+/AGENTS.md
+
+# Local tooling and workspace files
+/THIRD_PARTY_LICENSES/
+/coltivio-api.code-workspace
+/mcp/

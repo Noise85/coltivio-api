@@ -89,20 +89,27 @@ const harvestSummaryResponseSchema = z.object({
 
 export const getHarvestSummaryForFarmEndpoint = harvestsRead.build({
   method: "get",
-  input: z.object({}),
+  input: z.object({
+    fromDate: ez.dateIn().optional(),
+    toDate: ez.dateIn().optional(),
+  }),
   output: harvestSummaryResponseSchema,
-  handler: async ({ ctx: { harvests, farmId } }) => {
-    const result = await harvests.getHarvestSummaryForFarm(farmId);
+  handler: async ({ input, ctx: { harvests, farmId } }) => {
+    const result = await harvests.getHarvestSummaryForFarm(farmId, input.fromDate, input.toDate);
     return result;
   },
 });
 
 export const getHarvestSummaryForPlotEndpoint = harvestsRead.build({
   method: "get",
-  input: z.object({ plotId: z.string() }),
+  input: z.object({
+    plotId: z.string(),
+    fromDate: ez.dateIn().optional(),
+    toDate: ez.dateIn().optional(),
+  }),
   output: harvestSummaryResponseSchema,
   handler: async ({ input, ctx: { harvests } }) => {
-    const result = await harvests.getHarvestSummaryForPlot(input.plotId);
+    const result = await harvests.getHarvestSummaryForPlot(input.plotId, input.fromDate, input.toDate);
     return result;
   },
 });
