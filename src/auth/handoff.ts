@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import createHttpError from "http-errors";
 import { RlsDb } from "../db/db";
 import { handoffTokens } from "../db/schema";
@@ -17,25 +17,30 @@ export function handoffApi(db: RlsDb) {
     },
 
     async exchangeHandoffToken(token: string, redirectTo: string): Promise<{ url: string }> {
-      const row = await db.admin.query.handoffTokens.findFirst({
-        where: { token },
-      });
+      const [claimedToken] = await db.admin
+        .update(handoffTokens)
+        .set({ usedAt: sql`now()` })
+        .where(
+          and(eq(handoffTokens.token, token), isNull(handoffTokens.usedAt), gt(handoffTokens.expiresAt, sql`now()`))
+        )
+        .returning({ userId: handoffTokens.userId });
 
-      if (!row) {
-        throw createHttpError(400, "Invalid handoff token");
-      }
-      if (row.usedAt) {
-        throw createHttpError(410, "Handoff token already used");
-      }
-      if (row.expiresAt < new Date()) {
+      if (!claimedToken) {
+        const row = await db.admin.query.handoffTokens.findFirst({
+          where: { token },
+        });
+
+        if (!row) {
+          throw createHttpError(400, "Invalid handoff token");
+        }
+        if (row.usedAt) {
+          throw createHttpError(410, "Handoff token already used");
+        }
         throw createHttpError(400, "Handoff token expired");
       }
 
-      // Mark as used before generating the link to prevent races
-      await db.admin.update(handoffTokens).set({ usedAt: new Date() }).where(eq(handoffTokens.id, row.id));
-
       const profile = await db.admin.query.profiles.findFirst({
-        where: { id: row.userId },
+        where: { id: claimedToken.userId },
       });
       if (!profile) {
         throw createHttpError(500, "User profile not found");

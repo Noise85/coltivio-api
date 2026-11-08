@@ -144,3 +144,9 @@ supabase/snippets/
 backup_data_*.sql
 backups/
 
+AGENTS.md
+coltivio-api.code-workspace
+.codex
+.agents
+agents
+mcp/
