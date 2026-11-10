@@ -1,6 +1,15 @@
 import { count, eq } from "drizzle-orm";
 import { RlsDb } from "../db/db";
-import { farmIdColumnValue, crops, cropFamilies, cropRotations, harvests } from "../db/schema";
+import {
+  farmIdColumnValue,
+  crops,
+  cropFamilies,
+  cropRotationDraftPlanEntries,
+  cropRotations,
+  harvests,
+  seeds,
+  sowings,
+} from "../db/schema";
 
 export type CropCreateInput = Omit<typeof crops.$inferInsert, "id" | "farmId">;
 export type CropUpdateInput = Partial<CropCreateInput>;
@@ -60,7 +69,19 @@ export function cropApi(rlsDb: RlsDb) {
           .from(cropRotations)
           .where(eq(cropRotations.cropId, id));
         const [harvestResult] = await tx.select({ count: count() }).from(harvests).where(eq(harvests.cropId, id));
-        return cropRotationResult.count > 0 || harvestResult.count > 0;
+        const [sowingResult] = await tx.select({ count: count() }).from(sowings).where(eq(sowings.cropId, id));
+        const [seedResult] = await tx.select({ count: count() }).from(seeds).where(eq(seeds.cropId, id));
+        const [draftPlanEntryResult] = await tx
+          .select({ count: count() })
+          .from(cropRotationDraftPlanEntries)
+          .where(eq(cropRotationDraftPlanEntries.cropId, id));
+        return (
+          cropRotationResult.count > 0 ||
+          harvestResult.count > 0 ||
+          sowingResult.count > 0 ||
+          seedResult.count > 0 ||
+          draftPlanEntryResult.count > 0
+        );
       });
     },
 

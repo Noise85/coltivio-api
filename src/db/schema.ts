@@ -4,6 +4,7 @@ import {
   check,
   customType,
   date,
+  doublePrecision,
   foreignKey,
   index,
   integer,
@@ -1298,6 +1299,118 @@ export const fertilizerApplications = pgTable.withRLS(
     fertilizerId: uuid()
       .references(() => fertilizers.id)
       .notNull(),
+    geometry: polygon().notNull(),
+    size: integer().notNull(),
+    additionalNotes: text(),
+  },
+  (table) => [
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
+export const seedQuantityKind = pgEnum("seed_quantity_kind", ["weight", "count"]);
+
+// units as entered by the user; normalized to grams (weight) or pieces (count), see src/sowings/sowing-units.ts
+export const sowingUnit = pgEnum("sowing_unit", [
+  "kg_per_ha",
+  "g_per_m2",
+  "seeds_per_ha",
+  "seeds_per_m2",
+  "plants_per_ha",
+  "plants_per_m2",
+  "kg",
+  "g",
+  "seeds",
+  "plants",
+]);
+
+export const seeds = pgTable.withRLS(
+  "seeds",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, {
+        onDelete: "cascade",
+      }),
+    name: text().notNull(),
+    description: text(),
+    // a seed always belongs to a crop, sowings take their crop from the seed
+    cropId: uuid()
+      .notNull()
+      .references(() => crops.id),
+    // immutable after creation so all sowings of a seed stay summable
+    quantityKind: seedQuantityKind().notNull(),
+    defaultAmount: real(),
+    defaultUnit: sowingUnit(),
+  },
+  (table) => [
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
+export const sowingPresets = pgTable.withRLS(
+  "sowing_presets",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, {
+        onDelete: "cascade",
+      }),
+    name: text().notNull(),
+    cropId: uuid()
+      .notNull()
+      .references(() => crops.id, { onDelete: "cascade" }),
+    seedId: uuid().references(() => seeds.id, { onDelete: "cascade" }),
+    unit: sowingUnit().notNull(),
+    amount: real().notNull(),
+  },
+  (table) => [
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
+export const sowings = pgTable.withRLS(
+  "sowings",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, {
+        onDelete: "cascade",
+      }),
+    createdAt: timestamp().notNull().defaultNow(),
+    createdBy: uuid().references(() => profiles.id, { onDelete: "set null" }),
+    date: date({ mode: "date" }).notNull(),
+    plotId: uuid()
+      .notNull()
+      .references(() => plots.id, { onDelete: "cascade" }),
+    cropId: uuid()
+      .notNull()
+      .references(() => crops.id),
+    seedId: uuid().references(() => seeds.id),
+    unit: sowingUnit().notNull(),
+    amount: real().notNull(),
+    // normalized to grams (weight) or pieces (count); double precision because
+    // seed counts on large areas exceed real's ~7 significant digits
+    totalBaseAmount: doublePrecision().notNull(),
+    baseAmountPerHectare: doublePrecision().notNull(),
     geometry: polygon().notNull(),
     size: integer().notNull(),
     additionalNotes: text(),
@@ -2753,6 +2866,9 @@ const tables = {
   fertilizers,
   fertilizerApplicationPresets,
   fertilizerApplications,
+  seeds,
+  sowingPresets,
+  sowings,
   contacts,
   products,
   orders,
@@ -2853,6 +2969,7 @@ export const relations = defineRelations(tables, (r) => ({
     plots: r.many.plots(),
     harvests: r.many.harvests(),
     fertilizerApplications: r.many.fertilizerApplications(),
+    sowings: r.many.sowings(),
     invites: r.many.farmInvites(),
     journalEntries: r.many.farmJournalEntries(),
   },
@@ -3040,6 +3157,7 @@ export const relations = defineRelations(tables, (r) => ({
     tillages: r.many.tillages(),
     cropProtectionApplications: r.many.cropProtectionApplications(),
     fertilizerApplications: r.many.fertilizerApplications(),
+    sowings: r.many.sowings(),
     journalEntries: r.many.plotJournalEntries(),
   },
   harvestPresets: {
@@ -3102,6 +3220,57 @@ export const relations = defineRelations(tables, (r) => ({
       from: r.fertilizerApplications.plotId,
       to: r.plots.id,
       optional: false,
+    }),
+  },
+  seeds: {
+    farm: r.one.farms({
+      from: r.seeds.farmId,
+      to: r.farms.id,
+      optional: false,
+    }),
+    crop: r.one.crops({
+      from: r.seeds.cropId,
+      to: r.crops.id,
+      optional: false,
+    }),
+    sowings: r.many.sowings(),
+    sowingPresets: r.many.sowingPresets(),
+  },
+  sowingPresets: {
+    farm: r.one.farms({
+      from: r.sowingPresets.farmId,
+      to: r.farms.id,
+      optional: false,
+    }),
+    crop: r.one.crops({
+      from: r.sowingPresets.cropId,
+      to: r.crops.id,
+      optional: false,
+    }),
+    seed: r.one.seeds({
+      from: r.sowingPresets.seedId,
+      to: r.seeds.id,
+    }),
+  },
+  sowings: {
+    farm: r.one.farms({
+      from: r.sowings.farmId,
+      to: r.farms.id,
+      optional: false,
+    }),
+    plot: r.one.plots({
+      from: r.sowings.plotId,
+      to: r.plots.id,
+      optional: false,
+    }),
+    crop: r.one.crops({
+      from: r.sowings.cropId,
+      to: r.crops.id,
+      optional: false,
+    }),
+    seed: r.one.seeds({
+      from: r.sowings.seedId,
+      to: r.seeds.id,
     }),
   },
   contacts: {
@@ -3683,6 +3852,9 @@ export const fertilizerApplicationUnitSchema = z.enum(fertilizerApplicationUnit.
 export const fertilizerUnitSchema = z.enum(fertilizerUnit.enumValues);
 export const fertilizerTypeSchema = z.enum(fertilizerType.enumValues);
 export const fertilizationMethodSchema = z.enum(fertilizationMethod.enumValues);
+
+export const seedQuantityKindSchema = z.enum(seedQuantityKind.enumValues);
+export const sowingUnitSchema = z.enum(sowingUnit.enumValues);
 
 export const animalTypeSchema = z.enum(animalType.enumValues);
 export const animalUsageSchema = z.enum(animalUsage.enumValues);
