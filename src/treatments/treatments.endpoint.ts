@@ -31,7 +31,15 @@ export const treatmentSchema = z.object({
   createdBy: z.string().nullable(),
 });
 
+const animalTreatmentDoseSchema = z.object({
+  animalId: z.string(),
+  animalWeightKg: z.number().nullable(),
+  effectiveDoseValue: z.number().nullable(),
+});
+
 export const treatmentWithRelationsSchema = treatmentSchema.extend({
+  // Weight of each animal at treatment time and the effective amount for per-kg doses
+  animalDoses: z.array(animalTreatmentDoseSchema).optional(),
   get animals() {
     return z.array(animalSchema);
   },
@@ -57,10 +65,18 @@ const createTreatmentSchema = z.object({
   isAntibiotic: z.boolean().optional().default(false),
   criticalAntibiotic: z.boolean(),
   antibiogramAvailable: z.boolean(),
+  // Optional per-animal weight overrides, otherwise the latest weight entry on or before startDate is used
+  animalWeights: z.array(z.object({ animalId: z.string(), weightKg: z.number().positive().nullable() })).optional(),
+  // Optional per-animal effective amounts entered by the user, otherwise computed from dose and weight
+  effectiveDoseOverrides: z
+    .array(z.object({ animalId: z.string(), effectiveDoseValue: z.number().nonnegative().nullable() }))
+    .optional(),
 });
 
 const updateTreatmentSchema = createTreatmentSchema.partial().extend({
   treatmentId: z.string(),
+  // Without this, partial() keeps the create default and every PATCH omitting it would reset it to false
+  isAntibiotic: z.boolean().optional(),
 });
 
 export const getTreatmentByIdEndpoint = treatmentsRead.build({
@@ -117,7 +133,9 @@ export const updateTreatmentEndpoint = treatmentsWrite.build({
   output: treatmentSchema,
   handler: async ({ input, ctx: { treatments } }) => {
     const { treatmentId, ...data } = input;
-    return treatments.updateTreatment(treatmentId, data);
+    const treatment = await treatments.updateTreatment(treatmentId, data);
+    if (!treatment) throw createHttpError(404, "Treatment not found");
+    return treatment;
   },
 });
 

@@ -297,7 +297,9 @@
       "drug_origin": "Drug origin",
       "milk": "Milk",
       "meat": "Meat",
-      "organs": "Organs"
+      "organs": "Organs",
+      "weight": "Weight (kg)",
+      "effective_amount": "Effective amount"
     }
   },
   "drug_dose_units": {
@@ -550,5 +552,11 @@
       "fecal_egg_count": "Fecal egg count"
     },
     "follow_up_task_name_with_name": "Worm infestation check – {{name}}"
+  },
+  "breeding_reminder_push": {
+    "title": "Birth expected",
+    "body_today": "Today: {{names}}",
+    "body_tomorrow": "Tomorrow: {{names}}",
+    "body_in_days": "In {{days}} days: {{names}}"
   }
 }

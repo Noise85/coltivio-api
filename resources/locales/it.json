@@ -297,7 +297,9 @@
       "drug_origin": "Origine del medicinale",
       "milk": "Latte",
       "meat": "Carne",
-      "organs": "Organi"
+      "organs": "Organi",
+      "weight": "Peso (kg)",
+      "effective_amount": "Quantità effettiva"
     }
   },
   "drug_dose_units": {
@@ -550,5 +552,11 @@
       "fecal_egg_count": "Esame coprologico"
     },
     "follow_up_task_name_with_name": "Controllo infestazione da vermi – {{name}}"
+  },
+  "breeding_reminder_push": {
+    "title": "Parto previsto",
+    "body_today": "Oggi: {{names}}",
+    "body_tomorrow": "Domani: {{names}}",
+    "body_in_days": "Tra {{days}} giorni: {{names}}"
   }
 }

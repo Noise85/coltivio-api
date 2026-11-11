@@ -84,6 +84,12 @@ export function animalsReportsApi(rlsDb: RlsDb, t: TFunction, locale: string = "
               }
             }
 
+            // Effective amount for per-kg doses, e.g. "12.5 ml"
+            const effectiveAmount =
+              at.effectiveDoseValue != null && treatment.drugDoseUnit
+                ? `${at.effectiveDoseValue} ${t(`drug_dose_units.${treatment.drugDoseUnit}`)}`
+                : "";
+
             const checkmark = "✓";
 
             rowsByType
@@ -95,6 +101,8 @@ export function animalsReportsApi(rlsDb: RlsDb, t: TFunction, locale: string = "
                 treatment.name,
                 treatment.drug?.name ?? "",
                 dose,
+                at.animalWeightKg ?? "",
+                effectiveAmount,
                 treatment.isAntibiotic ? checkmark : "",
                 treatment.criticalAntibiotic ? checkmark : "",
                 treatment.antibiogramAvailable ? checkmark : "",

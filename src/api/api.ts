@@ -1,5 +1,7 @@
 import { animalsApi } from "../animals/animals";
 import { animalJournalApi } from "../animals/animal-journal";
+import { animalWeightsApi } from "../animals/animal-weights";
+import { breedingApi } from "../animals/breeding";
 import { plotJournalApi } from "../plots/plot-journal";
 import { farmJournalApi } from "../farm/farm-journal";
 import { dashboardApi } from "../dashboard/dashboard";
@@ -75,6 +77,8 @@ export function sessionApi(db: RlsDb, t: TFunction, locale: string) {
     animalsReports: animalsReportsApi(db, t, locale),
     animals: animalsApi(db, t),
     animalJournal: animalJournalApi(db),
+    animalWeights: animalWeightsApi(db),
+    breeding: breedingApi(db),
     plotJournal: plotJournalApi(db),
     farmJournal: farmJournalApi(db),
     earTags: earTagsApi(db),

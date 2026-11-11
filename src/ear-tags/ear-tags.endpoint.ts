@@ -1,3 +1,4 @@
+import createHttpError from "http-errors";
 import { z } from "zod";
 import { animalSchema } from "../animals/animals.endpoint";
 import { permissionFarmEndpoint } from "../endpoint-factory";
@@ -80,5 +81,17 @@ export const deleteEarTagRangeEndpoint = animalsWrite.build({
   }),
   handler: async ({ input, ctx: { earTags, farmId } }) => {
     return earTags.deleteEarTagRange(farmId, input.fromNumber, input.toNumber);
+  },
+});
+
+// Single ear tag by id. Assigned tags are refused (ear_tag_assigned), the animal has to give it up first.
+export const deleteEarTagEndpoint = animalsWrite.build({
+  method: "delete",
+  input: z.object({ earTagId: z.string() }),
+  output: z.object({}),
+  handler: async ({ input, ctx: { earTags } }) => {
+    const deleted = await earTags.deleteEarTag(input.earTagId);
+    if (!deleted) throw createHttpError(404, "Ear tag not found");
+    return {};
   },
 });

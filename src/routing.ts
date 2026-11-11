@@ -37,6 +37,21 @@ import {
   updateAnimalJournalEntryEndpoint,
 } from "./animals/animal-journal.endpoint";
 import {
+  createAnimalWeightEndpoint,
+  deleteAnimalWeightEndpoint,
+  listAnimalWeightsEndpoint,
+  updateAnimalWeightEndpoint,
+} from "./animals/animal-weights.endpoint";
+import {
+  createAnimalHeatEndpoint,
+  deleteAnimalHeatEndpoint,
+  getBreedingCalendarEndpoint,
+  getGestationSettingsEndpoint,
+  listAnimalHeatsEndpoint,
+  updateAnimalHeatEndpoint,
+  updateGestationSettingsEndpoint,
+} from "./animals/breeding.endpoint";
+import {
   createContactEndpoint,
   deleteContactEndpoint,
   getContactByIdEndpoint,
@@ -67,6 +82,7 @@ import {
 import {
   createEarTagRangeEndpoint,
   deleteEarTagRangeEndpoint,
+  deleteEarTagEndpoint,
   getAvailableEarTagsEndpoint,
   getEarTagsEndpoint,
 } from "./ear-tags/ear-tags.endpoint";
@@ -888,7 +904,19 @@ export const routing: Routing = {
           customOutdoorJournalCategories: setCustomOutdoorJournalCategoriesEndpoint,
           journal: { "": { get: listAnimalJournalEntriesEndpoint, post: createAnimalJournalEntryEndpoint } },
           parasiteHistory: getAnimalParasiteHistoryEndpoint,
+          weights: { "": { get: listAnimalWeightsEndpoint, post: createAnimalWeightEndpoint } },
+          heats: { "": { get: listAnimalHeatsEndpoint, post: createAnimalHeatEndpoint } },
         },
+      },
+      weights: {
+        byId: { ":weightId": { patch: updateAnimalWeightEndpoint, delete: deleteAnimalWeightEndpoint } },
+      },
+      heats: {
+        byId: { ":heatId": { patch: updateAnimalHeatEndpoint, delete: deleteAnimalHeatEndpoint } },
+      },
+      breedingCalendar: {
+        "": { get: getBreedingCalendarEndpoint },
+        gestationSettings: { get: getGestationSettingsEndpoint, put: updateGestationSettingsEndpoint },
       },
       journal: {
         byId: {
@@ -944,6 +972,9 @@ export const routing: Routing = {
           post: createEarTagRangeEndpoint,
           delete: deleteEarTagRangeEndpoint,
         },
+      },
+      byId: {
+        ":earTagId": { delete: deleteEarTagEndpoint },
       },
     },
     drugs: {

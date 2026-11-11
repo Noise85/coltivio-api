@@ -297,7 +297,9 @@
       "drug_origin": "Origine du médicament",
       "milk": "Lait",
       "meat": "Viande",
-      "organs": "Organes"
+      "organs": "Organes",
+      "weight": "Poids (kg)",
+      "effective_amount": "Quantité effective"
     }
   },
   "drug_dose_units": {
@@ -550,5 +552,11 @@
       "fecal_egg_count": "Coprologie"
     },
     "follow_up_task_name_with_name": "Contrôle infestation vermineuse – {{name}}"
+  },
+  "breeding_reminder_push": {
+    "title": "Mise bas prévue",
+    "body_today": "Aujourd'hui : {{names}}",
+    "body_tomorrow": "Demain : {{names}}",
+    "body_in_days": "Dans {{days}} jours : {{names}}"
   }
 }

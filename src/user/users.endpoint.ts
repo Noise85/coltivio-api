@@ -2,7 +2,7 @@ import createHttpError from "http-errors";
 import { z } from "zod";
 import { farmEndpointFactory, authenticatedEndpointFactory } from "../endpoint-factory";
 import { farmPermissionFeatureSchema } from "../db/schema";
-import { deletionOutcomeSchema } from "./users";
+import { deletionOutcomeSchema, UserSettings } from "./users";
 
 const farmPermissionSchema = z.object({
   feature: farmPermissionFeatureSchema,
@@ -23,20 +23,27 @@ export const userSchema = z.object({
 // Extended schema for GET /me — includes the caller's explicit permission grants.
 // Owners always have full access so farmPermissions is empty for them.
 // Members default to "none" for unlisted features.
-const myProfileSchema = userSchema.extend({
-  farmPermissions: z.array(farmPermissionSchema),
+const settingsSchema = z.object({
   taskPushNotifications: z.boolean(),
+  // Days before an expected birth to send a push reminder (0 = on the day), null = off
+  breedingReminderDaysBefore1: z.number().nullable().optional(),
+  breedingReminderDaysBefore2: z.number().nullable().optional(),
 });
 
-const updatedProfileSchema = userSchema.extend({
-  taskPushNotifications: z.boolean(),
+const myProfileSchema = userSchema.extend({
+  farmPermissions: z.array(farmPermissionSchema),
+  ...settingsSchema.shape,
 });
+
+const updatedProfileSchema = userSchema.extend(settingsSchema.shape);
 
 const updateUserSchema = z
   .object({
     fullName: z.string().optional(),
     newsletterConsent: z.boolean().optional(),
     taskPushNotifications: z.boolean().optional(),
+    breedingReminderDaysBefore1: z.number().int().min(0).max(60).nullable().optional(),
+    breedingReminderDaysBefore2: z.number().int().min(0).max(60).nullable().optional(),
   })
   .partial();
 
@@ -109,7 +116,19 @@ export const updateUserProfileEndpoint = authenticatedEndpointFactory.build({
   input: updateUserSchema,
   output: updatedProfileSchema,
   handler: async ({ input, ctx }) => {
-    const { newsletterConsent, taskPushNotifications, ...profileInput } = input;
+    const {
+      newsletterConsent,
+      taskPushNotifications,
+      breedingReminderDaysBefore1,
+      breedingReminderDaysBefore2,
+      ...profileInput
+    } = input;
+    const settingsUpdate: Partial<UserSettings> = {};
+    if (taskPushNotifications !== undefined) settingsUpdate.taskPushNotifications = taskPushNotifications;
+    if (breedingReminderDaysBefore1 !== undefined)
+      settingsUpdate.breedingReminderDaysBefore1 = breedingReminderDaysBefore1;
+    if (breedingReminderDaysBefore2 !== undefined)
+      settingsUpdate.breedingReminderDaysBefore2 = breedingReminderDaysBefore2;
     if (newsletterConsent !== undefined) {
       await ctx.users.setNewsletterConsent(ctx.user.id, newsletterConsent);
     }
@@ -119,8 +138,8 @@ export const updateUserProfileEndpoint = authenticatedEndpointFactory.build({
       hasProfileChanges ? ctx.users.updateUser(ctx.user.id, profileInput) : ctx.users.getUserById(ctx.user.id),
       ctx.wikiModeration.isModerator(ctx.user.id),
       ctx.forumModeration.isModerator(ctx.user.id),
-      taskPushNotifications !== undefined
-        ? ctx.users.updateSettings(ctx.user.id, { taskPushNotifications })
+      Object.keys(settingsUpdate).length > 0
+        ? ctx.users.updateSettings(ctx.user.id, settingsUpdate)
         : ctx.users.getSettings(ctx.user.id),
     ]);
     return {

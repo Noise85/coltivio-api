@@ -17,6 +17,14 @@ export const apiErrorCodeSchema = z.enum([
   "plot_not_found",
   // a seed's default amount only means something together with a default unit
   "seed_default_amount_without_unit",
+  // some ear tag numbers of the requested range already exist on the farm
+  "ear_tag_range_conflict",
+  // the ear tag range is malformed (format, prefix, order) or larger than the allowed size
+  "invalid_ear_tag_range",
+  // the ear tag is assigned to an animal and can't be deleted
+  "ear_tag_assigned",
+  // the sire of a mating is the animal itself or not a male
+  "invalid_sire",
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

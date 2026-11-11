@@ -36,6 +36,14 @@ export const animalSchema = z.object({
   dateOfDeath: ez.dateOut().nullable(),
   deathReason: deathReasonSchema.nullable(),
   herdId: z.string().nullable(),
+  color: z.string().nullable(),
+  notes: z.string().nullable(),
+});
+
+export const latestAnimalWeightSchema = z.object({
+  id: z.string(),
+  date: ez.dateOut(),
+  weightKg: z.number(),
 });
 
 const herdSchema = z.object({
@@ -112,6 +120,7 @@ const customOutdoorJournalCategorySchema = z.object({
 });
 
 const animalWithRelationsSchema = animalSchema.extend({
+  latestWeight: latestAnimalWeightSchema.nullable().optional(),
   get earTag() {
     return earTagSchema.nullable();
   },
@@ -140,6 +149,8 @@ const createAnimalSchema = z.object({
   dateOfDeath: ez.dateIn().optional().nullable(),
   deathReason: deathReasonSchema.optional().nullable(),
   herdId: z.string().optional().nullable(),
+  color: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
   // Day from which a herdId change applies. Defaults to today.
   herdEffectiveDate: ez.dateIn().optional().nullable(),
 });
@@ -173,6 +184,7 @@ export const getFarmAnimalsEndpoint = animalsRead.build({
     result: z.array(
       animalSchema.extend({
         milkAndMeatUsable: z.boolean(),
+        latestWeight: latestAnimalWeightSchema.nullable().optional(),
       })
     ),
     count: z.number(),
@@ -239,8 +251,8 @@ export const batchUpdateAnimalsEndpoint = animalsWrite.build({
       registered: z.boolean().optional(),
       dateOfDeath: ez.dateIn().optional(),
       deathReason: deathReasonSchema.optional(),
-      motherId: z.string().optional(),
-      fatherId: z.string().optional(),
+      motherId: z.string().optional().nullable(),
+      fatherId: z.string().optional().nullable(),
     }),
   }),
   output: z.object({
@@ -248,7 +260,6 @@ export const batchUpdateAnimalsEndpoint = animalsWrite.build({
     count: z.number(),
   }),
   handler: async ({ input, ctx: { animals } }) => {
-    console.log(input.data);
     const result = await animals.batchUpdateAnimals(input.animalIds, input.data);
     return {
       result,
