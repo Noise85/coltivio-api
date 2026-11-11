@@ -14,6 +14,7 @@ const fieldCalendarReportInput = z.object({
   generateFertilizerApplications: z.boolean(),
   generateCropProtectionApplications: z.boolean(),
   generateHarvests: z.boolean(),
+  generateSowings: z.boolean().optional().default(false),
 });
 
 export const sendFieldCalendarReport = plotsRead.build({
@@ -29,7 +30,8 @@ export const sendFieldCalendarReport = plotsRead.build({
       input.generateTillages,
       input.generateFertilizerApplications,
       input.generateCropProtectionApplications,
-      input.generateHarvests
+      input.generateHarvests,
+      input.generateSowings
     );
     return {};
   },
@@ -50,7 +52,8 @@ export const downloadFieldCalendarReport = plotsRead.build({
       input.generateTillages,
       input.generateFertilizerApplications,
       input.generateCropProtectionApplications,
-      input.generateHarvests
+      input.generateHarvests,
+      input.generateSowings
     );
     return { base64: buffer.toString("base64"), fileName };
   },

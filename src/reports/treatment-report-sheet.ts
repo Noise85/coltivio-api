@@ -7,8 +7,8 @@ const THIN_SIDE: Partial<ExcelJS.Border> = { style: "thin", color: { argb: "FFB4
 const CELL_BORDER: Partial<ExcelJS.Borders> = { top: THIN_SIDE, bottom: THIN_SIDE, left: THIN_SIDE, right: THIN_SIDE };
 const STRIPE_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } };
 
-// Column widths for the 16 treatment columns, in Excel character units
-const COLUMN_WIDTHS = [12, 12, 20, 22, 20, 14, 12, 16, 13, 10, 10, 10, 12, 12, 12, 20];
+// Column widths for the 18 treatment columns, in Excel character units
+const COLUMN_WIDTHS = [12, 12, 20, 22, 20, 14, 12, 14, 12, 16, 13, 10, 10, 10, 12, 12, 12, 20];
 
 /**
  * Writes the two-row grouped header (e.g. "Absetzfrist" spanning Milch/Fleisch/Organe)
@@ -33,10 +33,12 @@ export function writeTreatmentTable(
     { col: 4, label: t("treatment_report.columns.treatment_reason") },
     { col: 5, label: t("treatment_report.columns.drug") },
     { col: 6, label: t("treatment_report.columns.dose") },
-    { col: 7, label: t("treatment_report.columns.is_antibiotic") },
-    { col: 8, label: t("treatment_report.columns.critical_antibiotic") },
-    { col: 9, label: t("treatment_report.columns.antibiogram") },
-    { col: 16, label: t("treatment_report.columns.drug_origin") },
+    { col: 7, label: t("treatment_report.columns.weight") },
+    { col: 8, label: t("treatment_report.columns.effective_amount") },
+    { col: 9, label: t("treatment_report.columns.is_antibiotic") },
+    { col: 10, label: t("treatment_report.columns.critical_antibiotic") },
+    { col: 11, label: t("treatment_report.columns.antibiogram") },
+    { col: 18, label: t("treatment_report.columns.drug_origin") },
   ];
 
   for (const { col, label } of singleColumns) {
@@ -58,8 +60,8 @@ export function writeTreatmentTable(
       subLabels: [t("treatment_report.columns.start"), t("treatment_report.columns.end")],
     },
     {
-      startCol: 10,
-      endCol: 12,
+      startCol: 12,
+      endCol: 14,
       group: t("treatment_report.groups.withdrawal_period"),
       subLabels: [
         t("treatment_report.columns.milk"),
@@ -68,8 +70,8 @@ export function writeTreatmentTable(
       ],
     },
     {
-      startCol: 13,
-      endCol: 15,
+      startCol: 15,
+      endCol: 17,
       group: t("treatment_report.groups.release_date"),
       subLabels: [
         t("treatment_report.columns.milk"),

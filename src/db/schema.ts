@@ -4,6 +4,7 @@ import {
   check,
   customType,
   date,
+  doublePrecision,
   foreignKey,
   index,
   integer,
@@ -371,6 +372,9 @@ export const userSettings = pgTable.withRLS(
       .primaryKey()
       .references(() => profiles.id, { onDelete: "cascade" }),
     taskPushNotifications: boolean().notNull().default(false),
+    // Days before an expected birth to send a push reminder (0 = on the day), null = off
+    breedingReminderDaysBefore1: integer(),
+    breedingReminderDaysBefore2: integer(),
   },
   (table) => [
     pgPolicy("user can manage own settings", {
@@ -1312,6 +1316,118 @@ export const fertilizerApplications = pgTable.withRLS(
   ]
 );
 
+export const seedQuantityKind = pgEnum("seed_quantity_kind", ["weight", "count"]);
+
+// units as entered by the user; normalized to grams (weight) or pieces (count), see src/sowings/sowing-units.ts
+export const sowingUnit = pgEnum("sowing_unit", [
+  "kg_per_ha",
+  "g_per_m2",
+  "seeds_per_ha",
+  "seeds_per_m2",
+  "plants_per_ha",
+  "plants_per_m2",
+  "kg",
+  "g",
+  "seeds",
+  "plants",
+]);
+
+export const seeds = pgTable.withRLS(
+  "seeds",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, {
+        onDelete: "cascade",
+      }),
+    name: text().notNull(),
+    description: text(),
+    // a seed always belongs to a crop, sowings take their crop from the seed
+    cropId: uuid()
+      .notNull()
+      .references(() => crops.id),
+    // immutable after creation so all sowings of a seed stay summable
+    quantityKind: seedQuantityKind().notNull(),
+    defaultAmount: real(),
+    defaultUnit: sowingUnit(),
+  },
+  (table) => [
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
+export const sowingPresets = pgTable.withRLS(
+  "sowing_presets",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, {
+        onDelete: "cascade",
+      }),
+    name: text().notNull(),
+    cropId: uuid()
+      .notNull()
+      .references(() => crops.id, { onDelete: "cascade" }),
+    seedId: uuid().references(() => seeds.id, { onDelete: "cascade" }),
+    unit: sowingUnit().notNull(),
+    amount: real().notNull(),
+  },
+  (table) => [
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
+export const sowings = pgTable.withRLS(
+  "sowings",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, {
+        onDelete: "cascade",
+      }),
+    createdAt: timestamp().notNull().defaultNow(),
+    createdBy: uuid().references(() => profiles.id, { onDelete: "set null" }),
+    date: date({ mode: "date" }).notNull(),
+    plotId: uuid()
+      .notNull()
+      .references(() => plots.id, { onDelete: "cascade" }),
+    cropId: uuid()
+      .notNull()
+      .references(() => crops.id),
+    seedId: uuid().references(() => seeds.id),
+    unit: sowingUnit().notNull(),
+    amount: real().notNull(),
+    // normalized to grams (weight) or pieces (count); double precision because
+    // seed counts on large areas exceed real's ~7 significant digits
+    totalBaseAmount: doublePrecision().notNull(),
+    baseAmountPerHectare: doublePrecision().notNull(),
+    geometry: polygon().notNull(),
+    size: integer().notNull(),
+    additionalNotes: text(),
+  },
+  (table) => [
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
 export const earTags = pgTable.withRLS(
   "ear_tags",
   {
@@ -1324,6 +1440,8 @@ export const earTags = pgTable.withRLS(
     number: text().notNull(),
   },
   (table) => [
+    // Exact match: "CH1" and "CH001" are different tags
+    unique().on(table.farmId, table.number),
     pgPolicy("only farm members", {
       as: "permissive",
       to: authenticatedRole,
@@ -1382,6 +1500,8 @@ export const animals = pgTable.withRLS(
     dateOfDeath: date({ mode: "date" }),
     deathReason: deathReason(),
     herdId: uuid().references(() => herds.id, { onDelete: "set null" }),
+    color: text(),
+    notes: text(),
   },
   (table) => [
     foreignKey({
@@ -1694,6 +1814,9 @@ export const animalTreatments = pgTable.withRLS(
     farmId: uuid()
       .notNull()
       .references(() => farms.id, { onDelete: "cascade" }),
+    // Weight of the animal at treatment time and the resulting amount for per-kg doses
+    animalWeightKg: real(),
+    effectiveDoseValue: real(),
   },
   (table) => [
     index("animal_treatments_animal_id_idx").on(table.animalId),
@@ -1706,6 +1829,105 @@ export const animalTreatments = pgTable.withRLS(
       withCheck: eq(table.farmId, currentFarmId),
     }),
   ]
+);
+
+export const animalWeights = pgTable.withRLS(
+  "animal_weights",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, { onDelete: "cascade" }),
+    animalId: uuid()
+      .notNull()
+      .references(() => animals.id, { onDelete: "cascade" }),
+    date: date({ mode: "date" }).notNull(),
+    weightKg: real().notNull(),
+    notes: text(),
+    createdAt: timestamp().notNull().defaultNow(),
+    createdBy: uuid().references(() => profiles.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    index("animal_weights_animal_id_date_idx").on(table.animalId, table.date),
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
+// Heat (in season / bockig) records of female animals, optionally mated. Mated heats drive the breeding calendar.
+export const animalHeats = pgTable.withRLS(
+  "animal_heats",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, { onDelete: "cascade" }),
+    animalId: uuid()
+      .notNull()
+      .references(() => animals.id, { onDelete: "cascade" }),
+    date: date({ mode: "date" }).notNull(),
+    mated: boolean().notNull().default(false),
+    sireId: uuid().references(() => animals.id, { onDelete: "set null" }),
+    // Free text for sires that are not on the farm
+    sireName: text(),
+    notes: text(),
+    createdAt: timestamp().notNull().defaultNow(),
+    createdBy: uuid().references(() => profiles.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    index("animal_heats_animal_id_idx").on(table.animalId),
+    index("animal_heats_farm_id_date_idx").on(table.farmId, table.date),
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
+// Farm-wide gestation length per animal type. A missing row means the default from gestation-defaults.ts.
+export const farmGestationSettings = pgTable.withRLS(
+  "farm_gestation_settings",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    farmId: uuid()
+      .notNull()
+      .references(() => farms.id, { onDelete: "cascade" }),
+    animalType: animalType().notNull(),
+    gestationDays: integer().notNull(),
+  },
+  (table) => [
+    unique("farm_gestation_settings_farm_type_unique").on(table.farmId, table.animalType),
+    pgPolicy("only farm members", {
+      as: "permissive",
+      to: authenticatedRole,
+      using: eq(table.farmId, currentFarmId),
+      withCheck: eq(table.farmId, currentFarmId),
+    }),
+  ]
+);
+
+// RLS enabled without policies: only db.admin (breeding reminder cron) can read/write.
+// Dedup log so each user is notified once per heat and reminder date.
+export const breedingReminderNotifications = pgTable.withRLS(
+  "breeding_reminder_notifications",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    heatId: uuid()
+      .notNull()
+      .references(() => animalHeats.id, { onDelete: "cascade" }),
+    userId: uuid()
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    reminderDate: date({ mode: "date" }).notNull(),
+    sentAt: timestamp({ mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [unique().on(table.heatId, table.userId, table.reminderDate)]
 );
 
 // Parasite control (worm monitoring): FAMACHA eyelid checks and lab fecal egg counts
@@ -2753,6 +2975,9 @@ const tables = {
   fertilizers,
   fertilizerApplicationPresets,
   fertilizerApplications,
+  seeds,
+  sowingPresets,
+  sowings,
   contacts,
   products,
   orders,
@@ -2766,6 +2991,10 @@ const tables = {
   drugTreatment,
   treatments,
   animalTreatments,
+  animalWeights,
+  animalHeats,
+  farmGestationSettings,
+  breedingReminderNotifications,
   herds,
   parasiteChecks,
   parasiteCheckAnimals,
@@ -2853,6 +3082,7 @@ export const relations = defineRelations(tables, (r) => ({
     plots: r.many.plots(),
     harvests: r.many.harvests(),
     fertilizerApplications: r.many.fertilizerApplications(),
+    sowings: r.many.sowings(),
     invites: r.many.farmInvites(),
     journalEntries: r.many.farmJournalEntries(),
   },
@@ -3040,6 +3270,7 @@ export const relations = defineRelations(tables, (r) => ({
     tillages: r.many.tillages(),
     cropProtectionApplications: r.many.cropProtectionApplications(),
     fertilizerApplications: r.many.fertilizerApplications(),
+    sowings: r.many.sowings(),
     journalEntries: r.many.plotJournalEntries(),
   },
   harvestPresets: {
@@ -3102,6 +3333,57 @@ export const relations = defineRelations(tables, (r) => ({
       from: r.fertilizerApplications.plotId,
       to: r.plots.id,
       optional: false,
+    }),
+  },
+  seeds: {
+    farm: r.one.farms({
+      from: r.seeds.farmId,
+      to: r.farms.id,
+      optional: false,
+    }),
+    crop: r.one.crops({
+      from: r.seeds.cropId,
+      to: r.crops.id,
+      optional: false,
+    }),
+    sowings: r.many.sowings(),
+    sowingPresets: r.many.sowingPresets(),
+  },
+  sowingPresets: {
+    farm: r.one.farms({
+      from: r.sowingPresets.farmId,
+      to: r.farms.id,
+      optional: false,
+    }),
+    crop: r.one.crops({
+      from: r.sowingPresets.cropId,
+      to: r.crops.id,
+      optional: false,
+    }),
+    seed: r.one.seeds({
+      from: r.sowingPresets.seedId,
+      to: r.seeds.id,
+    }),
+  },
+  sowings: {
+    farm: r.one.farms({
+      from: r.sowings.farmId,
+      to: r.farms.id,
+      optional: false,
+    }),
+    plot: r.one.plots({
+      from: r.sowings.plotId,
+      to: r.plots.id,
+      optional: false,
+    }),
+    crop: r.one.crops({
+      from: r.sowings.cropId,
+      to: r.crops.id,
+      optional: false,
+    }),
+    seed: r.one.seeds({
+      from: r.sowings.seedId,
+      to: r.seeds.id,
     }),
   },
   contacts: {
@@ -3254,6 +3536,28 @@ export const relations = defineRelations(tables, (r) => ({
     herdMemberships: r.many.herdMemberships(),
     customOutdoorJournalCategories: r.many.customOutdoorJournalCategories(),
     journalEntries: r.many.animalJournalEntries(),
+    weights: r.many.animalWeights(),
+    heats: r.many.animalHeats({ alias: "heats" }),
+  },
+  animalWeights: {
+    animal: r.one.animals({
+      from: r.animalWeights.animalId,
+      to: r.animals.id,
+      optional: false,
+    }),
+  },
+  animalHeats: {
+    animal: r.one.animals({
+      from: r.animalHeats.animalId,
+      to: r.animals.id,
+      optional: false,
+      alias: "heats",
+    }),
+    sire: r.one.animals({
+      from: r.animalHeats.sireId,
+      to: r.animals.id,
+      alias: "sire",
+    }),
   },
   customOutdoorJournalCategories: {
     farm: r.one.farms({
@@ -3683,6 +3987,9 @@ export const fertilizerApplicationUnitSchema = z.enum(fertilizerApplicationUnit.
 export const fertilizerUnitSchema = z.enum(fertilizerUnit.enumValues);
 export const fertilizerTypeSchema = z.enum(fertilizerType.enumValues);
 export const fertilizationMethodSchema = z.enum(fertilizationMethod.enumValues);
+
+export const seedQuantityKindSchema = z.enum(seedQuantityKind.enumValues);
+export const sowingUnitSchema = z.enum(sowingUnit.enumValues);
 
 export const animalTypeSchema = z.enum(animalType.enumValues);
 export const animalUsageSchema = z.enum(animalUsage.enumValues);

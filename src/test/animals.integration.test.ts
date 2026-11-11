@@ -254,6 +254,92 @@ describe("Animal parent-child relationships", () => {
     };
     expect(fatherChildrenBody.data.count).toBe(1);
   });
+
+  it("adds offspring to a parent via batch update and removes them by clearing the link", async () => {
+    const { jwt } = await createUserWithFarm();
+    const mother = await createAnimal(jwt, { name: "Mother", sex: "female" });
+    const firstCalf = await createAnimal(jwt, { name: "Calf 1", dateOfBirth: "2024-06-01" });
+    const secondCalf = await createAnimal(jwt, { name: "Calf 2", dateOfBirth: "2024-06-01" });
+
+    const addRes = await request(
+      "PATCH",
+      "/v1/animals/batch",
+      { animalIds: [firstCalf.id, secondCalf.id], data: { motherId: mother.id } },
+      jwt
+    );
+    expect(addRes.status).toBe(200);
+
+    const childrenRes = await request("GET", `/v1/animals/byId/${mother.id}/children`, undefined, jwt);
+    const childrenBody = (await childrenRes.json()) as { data: { count: number } };
+    expect(childrenBody.data.count).toBe(2);
+
+    const removeRes = await request(
+      "PATCH",
+      "/v1/animals/batch",
+      { animalIds: [firstCalf.id], data: { motherId: null } },
+      jwt
+    );
+    expect(removeRes.status).toBe(200);
+
+    const db = getAdminDb();
+    const dbFirstCalf = await db.query.animals.findFirst({ where: { id: firstCalf.id } });
+    const dbSecondCalf = await db.query.animals.findFirst({ where: { id: secondCalf.id } });
+    expect(dbFirstCalf!.motherId).toBeNull();
+    expect(dbSecondCalf!.motherId).toBe(mother.id);
+  });
+});
+
+describe("Animal color and notes", () => {
+  beforeEach(cleanDb);
+
+  it("defaults color and notes to null when omitted", async () => {
+    const { jwt } = await createUserWithFarm();
+    const animal = await createAnimal(jwt, { name: "Plain" });
+    expect(animal.color).toBeNull();
+    expect(animal.notes).toBeNull();
+  });
+
+  it("clears the ear tag with null, which makes the tag available again", async () => {
+    const { jwt } = await createUserWithFarm();
+    const createRes = await request("POST", "/v1/earTags/range", { fromNumber: "CH060", toNumber: "CH060" }, jwt);
+    const [earTag] = ((await createRes.json()) as { data: { result: { id: string }[] } }).data.result;
+    const animal = await createAnimal(jwt, { earTagId: earTag.id });
+
+    const clearRes = await request("PATCH", `/v1/animals/byId/${animal.id}`, { earTagId: null }, jwt);
+    expect(clearRes.status).toBe(200);
+    expect(((await clearRes.json()) as { data: { earTagId: string | null } }).data.earTagId).toBeNull();
+    const availableRes = await request("GET", "/v1/earTags/available", undefined, jwt);
+    const available = ((await availableRes.json()) as { data: { result: { id: string }[] } }).data.result;
+    expect(available.map((tag) => tag.id)).toContain(earTag.id);
+  });
+
+  it("creates, updates and clears color and notes", async () => {
+    const { jwt } = await createUserWithFarm();
+    const animal = await createAnimal(jwt, { name: "Bella", color: "brown", notes: "Calm, easy to milk" });
+    expect(animal.color).toBe("brown");
+    expect(animal.notes).toBe("Calm, easy to milk");
+
+    const updateRes = await request(
+      "PATCH",
+      `/v1/animals/byId/${animal.id}`,
+      { color: "black and white", notes: "Line one\nLine two" },
+      jwt
+    );
+    expect(updateRes.status).toBe(200);
+
+    const getRes = await request("GET", `/v1/animals/byId/${animal.id}`, undefined, jwt);
+    const getBody = (await getRes.json()) as { data: { color: string | null; notes: string | null } };
+    expect(getBody.data.color).toBe("black and white");
+    expect(getBody.data.notes).toBe("Line one\nLine two");
+
+    const clearRes = await request("PATCH", `/v1/animals/byId/${animal.id}`, { color: null, notes: null }, jwt);
+    expect(clearRes.status).toBe(200);
+
+    const db = getAdminDb();
+    const dbAnimal = await db.query.animals.findFirst({ where: { id: animal.id } });
+    expect(dbAnimal!.color).toBeNull();
+    expect(dbAnimal!.notes).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
