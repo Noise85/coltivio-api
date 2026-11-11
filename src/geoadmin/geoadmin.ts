@@ -63,12 +63,39 @@ function buildUrl(geometry: string, offset: string = "0") {
   return `${BASE_URL}?${params.toString()}`;
 }
 
+// identify returns at most ~202 features per request. Paging with offset skips and repeats features, so an
+// envelope that comes back (nearly) full is split into four and queried again.
+const FULL_RESPONSE_THRESHOLD = 200;
+// 8 splits shrink an envelope by 256 in each direction, far below parcel size
+const MAX_SPLIT_DEPTH = 8;
+const REQUEST_TIMEOUT_MS = 15_000;
+
+// Envelopes are "xmin,ymin,xmax,ymax" in EPSG:4326. Parcels on tile borders are returned once.
 export async function getParcelsForEnvelopes(envelopes: string[]): Promise<GeoAdminParcels[]> {
-  const parcels: GeoAdminParcels[] = [];
-  for (const envelope of envelopes) {
-    const url = buildUrl(envelope);
-    const response = await axios.get<GeoAdminResponse>(url);
-    parcels.push(...response.data.results);
+  const parcelsById = new Map<number, GeoAdminParcels>();
+
+  async function collectParcels(xMin: number, yMin: number, xMax: number, yMax: number, depth: number) {
+    const envelope = `${xMin},${yMin},${xMax},${yMax}`;
+    const response = await axios.get<GeoAdminResponse>(buildUrl(envelope), { timeout: REQUEST_TIMEOUT_MS });
+    const results = response.data.results;
+    if (results.length >= FULL_RESPONSE_THRESHOLD && depth >= MAX_SPLIT_DEPTH) {
+      console.warn(`[geoadmin] parcels of envelope ${envelope} may be incomplete, still full at the deepest split`);
+    }
+    if (results.length < FULL_RESPONSE_THRESHOLD || depth >= MAX_SPLIT_DEPTH) {
+      for (const parcel of results) parcelsById.set(parcel.id, parcel);
+      return;
+    }
+    const xMid = (xMin + xMax) / 2;
+    const yMid = (yMin + yMax) / 2;
+    await collectParcels(xMin, yMin, xMid, yMid, depth + 1);
+    await collectParcels(xMid, yMin, xMax, yMid, depth + 1);
+    await collectParcels(xMin, yMid, xMid, yMax, depth + 1);
+    await collectParcels(xMid, yMid, xMax, yMax, depth + 1);
   }
-  return parcels;
+
+  for (const envelope of envelopes) {
+    const [xMin, yMin, xMax, yMax] = envelope.split(",").map(Number);
+    await collectParcels(xMin, yMin, xMax, yMax, 0);
+  }
+  return [...parcelsById.values()];
 }
