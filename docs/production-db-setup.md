@@ -123,16 +123,20 @@ CREATE POLICY "authenticated users can read" ON "federal_farm_plots" AS PERMISSI
 
 > **Note:** The first Drizzle migration expects these to exist. If you run migrations before applying the above, the migration will fail.
 
-Then import the shapefile:
+Then import the dataset built by `coltivio-internal/scripts/federal-farm-plots/build.sh` (see its README):
 
 ```bash
 ogr2ogr -f "PostgreSQL" \
   PG:"dbname=... user=... host=... port=..." \
-  farm_plots.shp \
+  farm_plots.gpkg \
   -nln 'federal_farm_plots' -nlt PROMOTE_TO_MULTI \
-  -lco GEOMETRY_NAME=geometry -lco FID=id \
+  -lco GEOMETRY_NAME=geometry -lco FID=id -lco SPATIAL_INDEX=NONE \
   -progress -overwrite
 ```
+
+`-overwrite` drops the table, so on re-imports (after migrations already ran) re-apply
+`drizzle/migrations/20250426132506_configure_federal_farm_plots/migration.sql` by hand: it creates the
+spatial index, the trigram index, RLS and the read policy.
 
 ## 7. Apply Drizzle migrations
 

@@ -33,3 +33,11 @@ export function hasOverlappingRanges(ranges: DateRange[]): boolean {
 
   return false;
 }
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Adds whole days to a UTC-midnight date (as stored for date columns). Unlike date-fns addDays it ignores the
+// server's local timezone, so DST changes can't shift the result off midnight onto a neighbouring day.
+export function addUtcDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * MS_PER_DAY);
+}

@@ -11,7 +11,11 @@ import { deleteNewsletterContact, removeNewsletterContact, upsertNewsletterConta
 
 export type NewUser = typeof profiles.$inferInsert;
 export type UpdatedUser = Partial<NewUser>;
-export type UserSettings = { taskPushNotifications: boolean };
+export type UserSettings = {
+  taskPushNotifications: boolean;
+  breedingReminderDaysBefore1: number | null;
+  breedingReminderDaysBefore2: number | null;
+};
 export type User = typeof profiles.$inferSelect;
 
 // What happens to each of the user's farms when the account is deleted:
@@ -132,7 +136,11 @@ export function usersApi(authDb: RlsDb) {
     async getSettings(userId: string): Promise<UserSettings> {
       return authDb.rls(async (tx) => {
         const settings = await tx.query.userSettings.findFirst({ where: { userId } });
-        return { taskPushNotifications: settings?.taskPushNotifications ?? false };
+        return {
+          taskPushNotifications: settings?.taskPushNotifications ?? false,
+          breedingReminderDaysBefore1: settings?.breedingReminderDaysBefore1 ?? null,
+          breedingReminderDaysBefore2: settings?.breedingReminderDaysBefore2 ?? null,
+        };
       });
     },
 
@@ -143,7 +151,11 @@ export function usersApi(authDb: RlsDb) {
           .values({ userId, ...update })
           .onConflictDoUpdate({ target: userSettings.userId, set: update })
           .returning();
-        return { taskPushNotifications: settings.taskPushNotifications };
+        return {
+          taskPushNotifications: settings.taskPushNotifications,
+          breedingReminderDaysBefore1: settings.breedingReminderDaysBefore1,
+          breedingReminderDaysBefore2: settings.breedingReminderDaysBefore2,
+        };
       });
     },
 

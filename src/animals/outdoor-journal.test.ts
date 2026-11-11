@@ -47,6 +47,8 @@ function makeAnimal(overrides: {
     dateOfDeath: overrides.dateOfDeath ?? null,
     deathReason: null,
     herdId: null,
+    color: null,
+    notes: null,
     customOutdoorJournalCategories: [],
   };
 }

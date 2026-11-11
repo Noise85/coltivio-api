@@ -297,7 +297,9 @@
       "drug_origin": "Herkunft Arzneimittel",
       "milk": "Milch",
       "meat": "Fleisch",
-      "organs": "Organe"
+      "organs": "Organe",
+      "weight": "Gewicht (kg)",
+      "effective_amount": "Effektive Menge"
     }
   },
   "drug_dose_units": {
@@ -363,7 +365,9 @@
     "harvest": "{{cropName}} geerntet",
     "harvest_with_method": "{{cropName}} geerntet ({{conservationMethod}})",
     "fertilizer_application": "{{fertilizerName}} ausgebracht",
-    "crop_protection_application": "{{productName}} ausgebracht"
+    "crop_protection_application": "{{productName}} ausgebracht",
+    "sowing": "{{cropName}} gesät",
+    "sowing_with_seed": "{{cropName}} gesät ({{seedName}})"
   },
   "harvests": {
     "harvest": "Ernte",
@@ -388,6 +392,23 @@
         "other": "Anderes",
         "none": "Keine"
       }
+    }
+  },
+  "sowings": {
+    "sowing": "Saat",
+    "seed": "Saatgut",
+    "amount": "Menge",
+    "units": {
+      "kg_per_ha": "kg/ha",
+      "g_per_m2": "g/m²",
+      "seeds_per_ha": "Körner/ha",
+      "seeds_per_m2": "Körner/m²",
+      "plants_per_ha": "Pflanzen/ha",
+      "plants_per_m2": "Pflanzen/m²",
+      "kg": "kg",
+      "g": "g",
+      "seeds": "Körner",
+      "plants": "Pflanzen"
     }
   },
   "membership_email": {
@@ -531,5 +552,11 @@
       "fecal_egg_count": "Kotprobe"
     },
     "follow_up_task_name_with_name": "Kontrolle Wurmbefall – {{name}}"
+  },
+  "breeding_reminder_push": {
+    "title": "Geburt erwartet",
+    "body_today": "Heute: {{names}}",
+    "body_tomorrow": "Morgen: {{names}}",
+    "body_in_days": "In {{days}} Tagen: {{names}}"
   }
 }

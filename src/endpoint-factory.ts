@@ -9,7 +9,7 @@ import { adminDrizzle, rlsDb } from "./db/db";
 import { supabase, SupabaseToken } from "./supabase/supabase";
 import * as tables from "./db/schema";
 import { FarmPermissionFeature } from "./db/schema";
-import { sentryResultHandler } from "./sentry";
+import { apiResultHandler } from "./result-handler";
 import { completeAddressChangeIfNeeded, sendVerificationEmailIfNeeded } from "./user/user-verification";
 
 export const supabaseAuthMiddleware = new Middleware({
@@ -140,9 +140,9 @@ async function resolveFarmContext(farmIdHeader: string | string[] | undefined, u
   return { farmId: null, farmRole: null, unresolved: null };
 }
 
-const sentryEndpointFactory = new EndpointsFactory(sentryResultHandler);
+const baseEndpointFactory = new EndpointsFactory(apiResultHandler);
 
-export const publicEndpointFactory = sentryEndpointFactory.addMiddleware(
+export const publicEndpointFactory = baseEndpointFactory.addMiddleware(
   new Middleware({
     input: z.object({}),
     handler: async ({ input: {}, request, logger: _logger }) => {
@@ -258,7 +258,7 @@ export function permissionFarmEndpoint(feature: FarmPermissionFeature, access: "
 
 // Factory for internal admin endpoints protected by a static API key (from env ADMIN_API_KEY).
 // Used for operations that don't go through Supabase auth (e.g. promoting wiki moderators).
-export const adminApiKeyEndpointFactory = sentryEndpointFactory.addMiddleware(
+export const adminApiKeyEndpointFactory = baseEndpointFactory.addMiddleware(
   new Middleware({
     security: {
       type: "header",

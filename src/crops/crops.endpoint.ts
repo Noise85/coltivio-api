@@ -96,6 +96,10 @@ export const deleteCropEndpoint = cropsWrite.build({
   input: z.object({ cropId: z.string() }),
   output: z.object({}),
   handler: async ({ input: { cropId }, ctx: { crops } }) => {
+    // referenced crops can't be deleted, the foreign keys would otherwise fail with a 500
+    if (await crops.cropInUse(cropId)) {
+      throw createHttpError(409, "Crop is in use");
+    }
     await crops.deleteCrop(cropId);
     return {};
   },

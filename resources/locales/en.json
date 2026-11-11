@@ -297,7 +297,9 @@
       "drug_origin": "Drug origin",
       "milk": "Milk",
       "meat": "Meat",
-      "organs": "Organs"
+      "organs": "Organs",
+      "weight": "Weight (kg)",
+      "effective_amount": "Effective amount"
     }
   },
   "drug_dose_units": {
@@ -363,7 +365,9 @@
     "harvest": "Harvested {{cropName}}",
     "harvest_with_method": "Harvested {{cropName}} ({{conservationMethod}})",
     "fertilizer_application": "Applied {{fertilizerName}}",
-    "crop_protection_application": "Applied {{productName}}"
+    "crop_protection_application": "Applied {{productName}}",
+    "sowing": "Sowed {{cropName}}",
+    "sowing_with_seed": "Sowed {{cropName}} ({{seedName}})"
   },
   "harvests": {
     "harvest": "Harvest",
@@ -388,6 +392,23 @@
         "other": "Other",
         "none": "None"
       }
+    }
+  },
+  "sowings": {
+    "sowing": "Sowing",
+    "seed": "Seed",
+    "amount": "Amount",
+    "units": {
+      "kg_per_ha": "kg/ha",
+      "g_per_m2": "g/m²",
+      "seeds_per_ha": "seeds/ha",
+      "seeds_per_m2": "seeds/m²",
+      "plants_per_ha": "plants/ha",
+      "plants_per_m2": "plants/m²",
+      "kg": "kg",
+      "g": "g",
+      "seeds": "seeds",
+      "plants": "plants"
     }
   },
   "membership_email": {
@@ -531,5 +552,11 @@
       "fecal_egg_count": "Fecal egg count"
     },
     "follow_up_task_name_with_name": "Worm infestation check – {{name}}"
+  },
+  "breeding_reminder_push": {
+    "title": "Birth expected",
+    "body_today": "Today: {{names}}",
+    "body_tomorrow": "Tomorrow: {{names}}",
+    "body_in_days": "In {{days}} days: {{names}}"
   }
 }

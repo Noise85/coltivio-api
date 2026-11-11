@@ -85,6 +85,9 @@ function areaSquareMeters(geometry: SQL): SQL<number> {
 // centimetres; real features (ditches, paths, streams) are wider and must stay.
 const MERGE_GAP_TOLERANCE_METERS = 0.25;
 
+// Share of a plot a parcel has to cover to give the plot its number when syncing parcel numbers from geo.admin
+const MIN_PARCEL_SHARE = 0.1;
+
 // Cuts the given (already repaired) geometry out of all other active plots it overlaps. The overlapping plots
 // are repaired first, so a plot that was stored invalid does not block saving new ones.
 // Plots that only share a border are left alone: cutting changes nothing there, but the repair would rewrite
@@ -604,8 +607,9 @@ export function plotsApi(rlsDb: RlsDb, t: TFunction) {
       return plot!;
     },
 
+    // The geo.admin requests run between two transactions, so no connection is held while they're waiting
     async syncMissingLocalIds(): Promise<void> {
-      return rlsDb.rls(async (tx) => {
+      const plotGroups = await rlsDb.rls(async (tx) => {
         const clusters = await tx.$with("clusters").as(
           tx
             .select({
@@ -634,37 +638,63 @@ export function plotsApi(rlsDb: RlsDb, t: TFunction) {
         ST_XMax(${envelopes.box})::TEXT || ',' ||
         ST_YMax(${envelopes.box})::TEXT
         `;
-        const plotGroups = await tx
+        return tx
           .with(clusters, envelopes)
           .select({ farmId: envelopes.farmId, envelope: selectEsriEnvelope })
           .from(envelopes);
+      });
+      if (plotGroups.length === 0) return;
 
-        const geoAdminParcels = await getParcelsForEnvelopes(plotGroups.map((group) => group.envelope));
+      const geoAdminParcels = await getParcelsForEnvelopes(plotGroups.map((group) => group.envelope));
+      // Only real-estate parcels: building rights (SelbstRecht.Baurecht) lie on top of them with their own number
+      const realEstateParcels = geoAdminParcels
+        .filter((parcel) => parcel.properties.realestate_type === "Liegenschaft" && parcel.properties.number)
+        .map((parcel) => ({ number: parcel.properties.number, geometry: parcel.geometry }));
+      if (realEstateParcels.length === 0) return;
 
-        const candidates = await tx.query.plots.findMany({
-          where: { localId: { isNull: true } },
-        });
-        const plotIds = candidates.map((candidate) => candidate.id);
-        // Only generated names give way to the parcel number: "3" from farm creation, "Schlag 3" from a file
-        // import. Names the farmer chose (e.g. from the Acorda export) are kept.
-        const defaultNamePattern = `^(${escapeRegExp(t("plots.plot"))} )?[0-9]+$`;
+      // Only generated names give way to the parcel number: "3" from farm creation, "Schlag 3" from a file
+      // import. Names the farmer chose (e.g. from the Acorda export) are kept.
+      const defaultNamePattern = `^(${escapeRegExp(t("plots.plot"))} )?[0-9]+$`;
 
-        for (const parcel of geoAdminParcels) {
-          if (parcel.properties.number) {
-            await tx
-              .update(plots)
-              .set({
-                localId: parcel.properties.number,
-                name: sql`CASE WHEN ${plots.name} ~ ${defaultNamePattern} THEN ${parcel.properties.number} ELSE ${plots.name} END`,
-              })
-              .where(
-                and(
-                  inArray(plots.id, plotIds),
-                  sql`ST_Within(${plots.geometry}, ST_Buffer(ST_MakeValid(ST_GeomFromGeoJSON(${JSON.stringify(parcel.geometry)})), 0.0001))`
-                )
-              );
-          }
-        }
+      await rlsDb.rls(async (tx) => {
+        // Each plot gets the number of the parcel it overlaps most. Fields often span several parcels, so
+        // requiring the plot to lie inside one parcel would leave many of them without a number. A parcel
+        // has to cover at least MIN_PARCEL_SHARE of the plot, so a neighbour touched by a digitizing offset
+        // doesn't give its number when the plot's own parcel is missing from the results. Hand-drawn plots
+        // can be self-intersecting, ST_MakeValid keeps them from failing the whole update.
+        await tx.execute(sql`
+          WITH parcels AS (
+            SELECT
+              parcel ->> 'number' AS number,
+              ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(parcel ->> 'geometry'), 4326)) AS geometry
+            FROM json_array_elements(${JSON.stringify(realEstateParcels)}::json) AS parcel
+          ),
+          missing_plots AS (
+            SELECT ${plots.id} AS plot_id, ST_MakeValid(${plots.geometry}) AS geometry
+            FROM ${plots}
+            WHERE ${plots.localId} IS NULL
+          ),
+          parcel_overlaps AS (
+            SELECT
+              missing_plots.plot_id,
+              parcels.number,
+              ST_Area(ST_Intersection(parcels.geometry, missing_plots.geometry)) AS overlap_area,
+              ST_Area(missing_plots.geometry) AS plot_area
+            FROM missing_plots
+            JOIN parcels ON ST_Intersects(parcels.geometry, missing_plots.geometry)
+          ),
+          best_parcels AS (
+            SELECT DISTINCT ON (plot_id) plot_id, number
+            FROM parcel_overlaps
+            WHERE plot_area > 0 AND overlap_area / plot_area >= ${MIN_PARCEL_SHARE}
+            ORDER BY plot_id, overlap_area DESC
+          )
+          UPDATE ${plots}
+          SET local_id = best_parcels.number,
+              name = CASE WHEN ${plots.name} ~ ${defaultNamePattern} THEN best_parcels.number ELSE ${plots.name} END
+          FROM best_parcels
+          WHERE ${plots.id} = best_parcels.plot_id
+        `);
       });
     },
   };

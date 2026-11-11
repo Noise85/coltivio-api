@@ -297,7 +297,9 @@
       "drug_origin": "Origine del medicinale",
       "milk": "Latte",
       "meat": "Carne",
-      "organs": "Organi"
+      "organs": "Organi",
+      "weight": "Peso (kg)",
+      "effective_amount": "Quantità effettiva"
     }
   },
   "drug_dose_units": {
@@ -363,7 +365,9 @@
     "harvest": "{{cropName}} raccolto",
     "harvest_with_method": "{{cropName}} raccolto ({{conservationMethod}})",
     "fertilizer_application": "{{fertilizerName}} applicato",
-    "crop_protection_application": "{{productName}} applicato"
+    "crop_protection_application": "{{productName}} applicato",
+    "sowing": "{{cropName}} seminato",
+    "sowing_with_seed": "{{cropName}} seminato ({{seedName}})"
   },
   "harvests": {
     "harvest": "Raccolta",
@@ -388,6 +392,23 @@
         "other": "Altro",
         "none": "Nessuno"
       }
+    }
+  },
+  "sowings": {
+    "sowing": "Semina",
+    "seed": "Sementi",
+    "amount": "Quantità",
+    "units": {
+      "kg_per_ha": "kg/ha",
+      "g_per_m2": "g/m²",
+      "seeds_per_ha": "semi/ha",
+      "seeds_per_m2": "semi/m²",
+      "plants_per_ha": "piante/ha",
+      "plants_per_m2": "piante/m²",
+      "kg": "kg",
+      "g": "g",
+      "seeds": "semi",
+      "plants": "piante"
     }
   },
   "membership_email": {
@@ -531,5 +552,11 @@
       "fecal_egg_count": "Esame coprologico"
     },
     "follow_up_task_name_with_name": "Controllo infestazione da vermi – {{name}}"
+  },
+  "breeding_reminder_push": {
+    "title": "Parto previsto",
+    "body_today": "Oggi: {{names}}",
+    "body_tomorrow": "Domani: {{names}}",
+    "body_in_days": "Tra {{days}} giorni: {{names}}"
   }
 }

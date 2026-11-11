@@ -504,7 +504,10 @@ export type FamilyTreeResult = {
   edges: FamilyTreeEdge[];
 };
 
+export type LatestAnimalWeight = { id: string; date: Date; weightKg: number };
+
 export type AnimalWithRelations = Animal & {
+  latestWeight: LatestAnimalWeight | null;
   mother: Animal | null;
   father: Animal | null;
   childrenAsMother: Animal[];
@@ -584,11 +587,18 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
             },
             herd: true,
             customOutdoorJournalCategories: true,
+            weights: {
+              columns: { id: true, date: true, weightKg: true },
+              orderBy: { date: "desc", createdAt: "desc" },
+              limit: 1,
+            },
           },
         });
         if (!result) return undefined;
+        const { weights, ...animal } = result;
         return {
-          ...result,
+          ...animal,
+          latestWeight: weights[0] ?? null,
           treatments: result.animalTreatments.map((at) => at.treatment),
         };
       });
@@ -611,9 +621,9 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
       farmId: string,
       onlyLiving: boolean,
       animalTypes?: AnimalType[]
-    ): Promise<Array<Animal & { milkAndMeatUsable: boolean }>> {
+    ): Promise<Array<Animal & { milkAndMeatUsable: boolean; latestWeight: LatestAnimalWeight | null }>> {
       return rlsDb.rls(async (tx) => {
-        return tx.query.animals.findMany({
+        const farmAnimals = await tx.query.animals.findMany({
           where: {
             farmId,
             type: { in: animalTypes },
@@ -621,6 +631,11 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
           },
           with: {
             earTag: true,
+            weights: {
+              columns: { id: true, date: true, weightKg: true },
+              orderBy: { date: "desc", createdAt: "desc" },
+              limit: 1,
+            },
           },
           extras: {
             milkAndMeatUsable: (table) =>
@@ -632,6 +647,7 @@ export function animalsApi(rlsDb: RlsDb, t: TFunction) {
               )`.as("milk_and_meat_usable"),
           },
         });
+        return farmAnimals.map(({ weights, ...animal }) => ({ ...animal, latestWeight: weights[0] ?? null }));
       });
     },
 

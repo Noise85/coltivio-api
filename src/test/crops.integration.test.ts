@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "@jest/globals";
 
 import { cleanDb, getAdminDb, request } from "./helpers";
 import * as schema from "../db/schema";
-import { createUserWithFarm, createCrop, createCropFamily } from "./test-utils";
+import { createUserWithFarm, createCrop, createCropFamily, createPlot } from "./test-utils";
 
 // ---------------------------------------------------------------------------
 // Crops CRUD
@@ -95,6 +95,30 @@ describe("Crops CRUD", () => {
       where: { id: crop.id },
     });
     expect(dbCrop).toBeUndefined();
+  });
+
+  it("refuses to delete a crop used in a draft crop rotation plan", async () => {
+    const { jwt } = await createUserWithFarm({}, "test@test.com", { withActiveMembership: true });
+    const plot = await createPlot(jwt, { name: "North Field" });
+    const crop = await createCrop(jwt);
+    const planRes = await request(
+      "POST",
+      "/v1/cropRotations/draftPlans",
+      {
+        name: "Draft",
+        plots: [{ plotId: plot.id, rotations: [{ cropId: crop.id, fromDate: "2026-03-01", toDate: "2026-10-31" }] }],
+      },
+      jwt
+    );
+    expect(planRes.status).toBe(200);
+
+    const inUseRes = await request("GET", `/v1/crops/byId/${crop.id}/inUse`, undefined, jwt);
+    expect(((await inUseRes.json()) as { data: { inUse: boolean } }).data.inUse).toBe(true);
+
+    const res = await request("DELETE", `/v1/crops/byId/${crop.id}`, undefined, jwt);
+    expect(res.status).toBe(409);
+    const dbCrop = await getAdminDb().query.crops.findFirst({ where: { id: crop.id } });
+    expect(dbCrop).toBeDefined();
   });
 
   it("checks if crop is in use (false when unused)", async () => {
