@@ -113,13 +113,8 @@ export function treatmentsApi(rlsDb: RlsDb) {
 
         // If dates not provided and drug specified, auto-calculate based on first animal's type
         if (treatmentData.drugId && (!milkUsableDate || !meatUsableDate)) {
-          const animal = await tx.query.animals.findFirst({
-            where: { id: animalIds[0] },
-          });
-
           const animal = animals.find(({ id }) => id === animalIds[0]);
           if (!animal) {
-            throw new Error("Animal not found");
             throw createHttpError(400, "Animal not found");
           }
 
@@ -366,4 +361,3 @@ export function treatmentsApi(rlsDb: RlsDb) {
     },
   };
 }
-
